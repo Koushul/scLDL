@@ -8,19 +8,19 @@ from tqdm import tqdm
 from .label_enhancer import LabelEnhancer
 
 class LabelEnhancerTrainer:
-    def __init__(self, model: LabelEnhancer, lr: float = 1e-3, pretrain_lr: float = 5e-3, beta: float = 0.001, lambda_gap: float = 1.0, lambda_spatial: float = 0.0):
+    def __init__(self, model: LabelEnhancer, lr: float = 1e-3, beta: float = 0.001, lambda_gap: float = 1.0, lambda_spatial: float = 0.0):
         """
         Args:
             model: LabelEnhancer model instance.
             lr: Learning rate for the main training phase.
-            pretrain_lr: Learning rate for the pretraining phase.
+            lr: Learning rate for the main training phase.
             beta: Weight for the Information Bottleneck term (I(Z;X)).
             lambda_gap: Weight for the Gap Estimation loss.
             lambda_spatial: Weight for the Spatial Regularization loss.
         """
         self.model = model
         self.lr = lr
-        self.pretrain_lr = pretrain_lr
+
         self.beta = beta
         self.lambda_gap = lambda_gap
         self.lambda_spatial = lambda_spatial
@@ -35,52 +35,8 @@ class LabelEnhancerTrainer:
             'spatial': []
         }
 
-    def train(self, train_loader: DataLoader, epochs: int = 100, pretrain_epochs: int = 50, log_interval: int = 10):
+    def train(self, train_loader: DataLoader, epochs: int = 100, log_interval: int = 10):
         self.model.train()
-        
-        # --- Pretraining Phase ---
-        if pretrain_epochs > 0:
-            print(f"Starting Pretraining for {pretrain_epochs} epochs...")
-            optimizer_pre = optim.Adam(
-                list(self.model.encoder.parameters()) + list(self.model.logical_decoder.parameters()),
-                lr=self.pretrain_lr
-            )
-            
-            for epoch in range(pretrain_epochs):
-                epoch_loss = 0
-                epoch_rec = 0
-                epoch_kl = 0
-                
-                pbar = tqdm(train_loader, desc=f"Pretrain Epoch {epoch+1}/{pretrain_epochs}", unit="batch", disable=True)
-                for batch_idx, (x, l_onehot, s, idx) in enumerate(pbar):
-                    x = x.to(self.device)
-                    l_onehot = l_onehot.to(self.device)
-                    
-                    optimizer_pre.zero_grad()
-                    
-                    # Forward pass for VAE only
-                    mu, log_var = self.model.encoder(x)
-                    z = self.model.reparameterize(mu, log_var)
-                    l_logits = self.model.logical_decoder(z)
-                    
-                    # Reconstruction Loss (I(Z; L))
-                    loss_rec = F.cross_entropy(l_logits, l_onehot.argmax(dim=1))
-                    
-                    # KL Divergence (I(Z; X))
-                    kl_div = -0.5 * torch.sum(1 + log_var - mu.pow(2) - log_var.exp(), dim=1).mean()
-                    
-                    loss = loss_rec + self.beta * kl_div
-                    
-                    loss.backward()
-                    optimizer_pre.step()
-                    
-                    epoch_loss += loss.item()
-                    epoch_rec += loss_rec.item()
-                    epoch_kl += kl_div.item()
-                
-                if (epoch + 1) % log_interval == 0:
-                    avg_loss = epoch_loss / len(train_loader)
-                    print(f"Pretrain Epoch {epoch+1}: Avg Loss = {avg_loss:.4f}")
 
         # --- Main Training Phase ---
         print(f"Starting Main Training for {epochs} epochs...")
@@ -183,6 +139,17 @@ class LabelEnhancerTrainer:
                 d_pred = self.model.get_label_distribution(x)
                 predictions.append(d_pred.cpu().numpy())
         return np.concatenate(predictions, axis=0)
+
+    def get_latent(self, data_loader: DataLoader):
+        self.model.eval()
+        latents = []
+        with torch.no_grad():
+            for x, _, _, _ in data_loader:
+                x = x.to(self.device)
+                mu, log_var = self.model.encoder(x)
+                z = self.model.reparameterize(mu, log_var)
+                latents.append(z.cpu().numpy())
+        return np.concatenate(latents, axis=0)
 
     def plot_losses(self):
         """

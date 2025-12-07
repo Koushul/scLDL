@@ -70,3 +70,38 @@ class scDataset(Dataset):
 
     def get_input_dim(self):
         return self.X.shape[1]
+
+
+
+def split_adata(adata, train_size=0.8, label_key='cell_type', random_state=42):
+    """
+    Splits an AnnData object into train and test sets, preserving the distribution of labels.
+
+    Args:
+        adata: AnnData object.
+        train_size: Proportion of the dataset to include in the train split.
+        label_key: Key in adata.obs containing the labels for stratification.
+        random_state: Random seed for reproducibility.
+
+    Returns:
+        train_adata, test_adata
+    """
+    from sklearn.model_selection import train_test_split
+    
+    if label_key not in adata.obs:
+        raise ValueError(f"Label key '{label_key}' not found in adata.obs")
+
+    labels = adata.obs[label_key].values
+    indices = np.arange(adata.n_obs)
+    
+    train_idx, test_idx = train_test_split(
+        indices, 
+        train_size=train_size, 
+        stratify=labels, 
+        random_state=random_state
+    )
+    
+    train_adata = adata[train_idx].copy()
+    test_adata = adata[test_idx].copy()
+    
+    return train_adata, test_adata

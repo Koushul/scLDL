@@ -16,18 +16,25 @@ The `LabelEnhancer` module is a core component of scLDL, designed to recover sof
 ### 1. Problem Formulation
 Let $\mathcal{X} \in \mathbb{R}^d$ be the input feature space (gene expression) and $\mathcal{L} = \{0, 1\}^c$ be the logical label space. The goal is to recover the latent **Label Distribution** $D \in \Delta^{c-1}$.
 We assume:
+
 $$ D = L + G $$
+
 where $G$ is the **Label Gap** (the missing distributional information).
 
 ### 2. Information Decomposition
 We decompose the mutual information between the latent representation $Z$ and the target distribution $D$:
+
 $$ I(Z; D) \approx I(Z; L) + I(Z; G) $$
+
 The objective function maximizes this information while compressing the input $X$:
+
 $$ \mathcal{L}_{LIB} = \underbrace{I(Z; L)}_{\text{Label Fit}} + \underbrace{I(Z; G)}_{\text{Gap Recovery}} - \beta \underbrace{I(Z; X)}_{\text{Compression}} $$
 
 ### 3. Final Objective Function
 The total loss function minimized during training is:
+
 $$ \mathcal{L}_{total} = \mathcal{L}_{CE}(\hat{L}, L) + \beta D_{KL}(p(z|x) || \mathcal{N}(0,I)) + \lambda_{gap} \mathcal{L}_{gap} + \lambda_{spatial} \mathcal{L}_{spatial} $$
+
 where $\mathcal{L}_{spatial}$ is our custom addition for spatial transcriptomics, penalizing distributional divergence between spatial neighbors.
 
 ### 4. Framework Schematic
