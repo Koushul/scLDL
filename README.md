@@ -41,47 +41,38 @@ where $\mathcal{L}_{spatial}$ is our custom addition for spatial transcriptomics
 
 ```mermaid
 graph TD
-    subgraph Input
-        X[Gene Expression X]
-        L[Logical Label L]
-        S[Spatial Coords S]
-    end
-
-    subgraph Encoder
-        X --> Enc[LabelEncoder]
-        Enc --> Mu[Mu]
-        Enc --> Std[Std]
-        Mu --> Z((Latent Z))
-        Std --> Z
-    end
-
-    subgraph Decoders
-        Z --> Dec[Logical Decoder]
-        Z --> DistNet[Distribution Decoder]
-        Z --> GapNet[Gap Decoder]
-    end
-
-    subgraph Outputs
-        Dec --> L_hat[Predicted Logical L_hat]
-        DistNet --> D_hat[Predicted Distribution D_hat]
-        GapNet --> Sigma[Gap Sigma]
-    end
-
-    subgraph Losses
-        Z -.->|KL Div| Loss_IB[Compression Loss I_ZX]
-        L_hat -.->|Cross Entropy| Loss_Rec[Label Fit I_ZL]
-        L -.-> Loss_Rec
+    %% Phase 1: Label Enhancement
+    subgraph "Phase 1: Label Enhancement (Data Curation)"
+        Input_X[Gene Expression] --> LE_Model[LabelEnhancer]
+        Input_L[Logical Labels] --> LE_Model
+        LE_Model -->|Recover| True_Dist[Soft Label Distributions]
         
-        D_hat -.-> Loss_Gap[Gap Recovery I_ZG]
-        L -.-> Loss_Gap
-        Sigma -.-> Loss_Gap
-        
-        D_hat -.-> Loss_Spatial[Spatial Reg]
-        S -.-> Loss_Spatial
+        %% Internal logic of LE (simplified)
+        subgraph "LabelEnhancer Internals"
+            LE_Model -.->|IB Principle| Latent_Z((Latent Z))
+            Latent_Z -.->|Reconstruct| Rec_L[Logical L]
+            Latent_Z -.->|Predict| Pred_D[Distribution D]
+        end
     end
 
-    style Z fill:#193,stroke:#333,stroke-width:2px
-    style D_hat fill:#338,stroke:#333,stroke-width:2px
+    %% Phase 2: LDL Framework Training
+    subgraph "Phase 2: LDL Framework Training"
+        Input_X --> LDL_Net[Deep LDL Network]
+        True_Dist -->|Supervision| LDL_Net
+        LDL_Net -->|Learn Mapping| Learned_Map[X -> D Mapping]
+    end
+
+    %% Phase 3: Downstream Applications
+    subgraph "Phase 3: Applications"
+        Learned_Map -->|Inference| New_Dist[Predicted Distributions]
+        
+        New_Dist -->|Entropy Threshold| Unknown[Unknown/Novel Cell Types]
+        New_Dist -->|Max Probability| Annot[Refined Annotation]
+        New_Dist -->|Spatial Aggregation| Deconv[Spatial Deconvolution]
+    end
+
+    style True_Dist fill:#f9f,stroke:#333,stroke-width:2px
+    style New_Dist fill:#bbf,stroke:#333,stroke-width:2px
 ```
 
 ## Implementation Details
