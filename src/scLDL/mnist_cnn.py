@@ -6,8 +6,8 @@ from label_enhancer import LIBLE
 
 def get_mnist_data():
     transform = transforms.Compose([transforms.ToTensor(), transforms.Normalize((0.1307,), (0.3081,))])
-    train_dataset = datasets.MNIST('./data', train=True, download=False, transform=transform)
-    test_dataset = datasets.MNIST('./data', train=False, download=False, transform=transform)
+    train_dataset = datasets.MNIST('./data', train=True, download=True, transform=transform)
+    test_dataset = datasets.MNIST('./data', train=False, download=True, transform=transform)
     
     # Flatten images and create one-hot labels
     X_train = train_dataset.data.float().view(-1, 28*28) / 255.0
@@ -31,7 +31,7 @@ def main():
     print(f"Training data shape: {X_train.shape}")
     print(f"Labels shape: {L_train.shape}")
     
-    print("Initializing LIBLE...")
+    print("Initializing LIBLE with CNN encoder...")
     model = LIBLE(
         n_features=784,
         n_outputs=10,
@@ -41,7 +41,9 @@ def main():
         beta=1e-3,
         lr=1e-3,
         epochs=5, # Short training for verification
-        batch_size=64
+        batch_size=64,
+        encoder_type='cnn',
+        input_shape=(1, 28, 28)
     )
     
     print("Training LIBLE...")
