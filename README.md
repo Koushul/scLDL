@@ -10,69 +10,68 @@ scLDL proposes a new framework for cell type annotation from single cell gene ex
 The `LabelEnhancer` module is a core component of scLDL, designed to recover soft label distributions from hard logical labels (e.g., cluster assignments). It is built upon the **Label Information Bottleneck (LIB)** principle, adapted for single-cell data.
 
 ## Theoretical Foundation
+scLDL leverages **Variational Inference** and **Concentration Distribution Learning** to recover latent label distributions.
 
-**LabelEnhancer** addresses the Label Enhancement (LE) problem by treating the observed logical label as a "compressed" version of the true latent label distribution. It uses the Information Bottleneck (IB) framework to "uncompress" this signal.
+### 1. Label Enhancement via Variational Inference (LEVI)
+LEVI treats the label enhancement problem as inference in a generative model. We assume there exists a latent variable $z$ that generates both the input features $x$ (gene expression) and the observed logical labels $l$.
+- **Generative Model**: $p_\theta(x, l | z)$
+- **Inference Model**: $q_\phi(z | x, l)$
 
-### 1. Problem Formulation
-Let $\mathcal{X} \in \mathbb{R}^d$ be the input feature space (gene expression) and $\mathcal{L} = \{0, 1\}^c$ be the logical label space. The goal is to recover the latent **Label Distribution** $D \in \Delta^{c-1}$.
-We assume:
+By maximizing the Evidence Lower Bound (ELBO), we learn a latent space $z$ that captures the underlying structure of the data, which is then used to reconstruct the soft label distributions.
 
-$$ D = L + G $$
+$$ \mathcal{L}_{LEVI} = \mathbb{E}_{q(z|x,l)}[\log p(x|z) + \log p(l|z)] - D_{KL}(q(z|x,l) || p(z)) $$
 
-where $G$ is the **Label Gap** (the missing distributional information).
+### 2. Concentration Distribution Learning (ConcentrationLE)
+ConcentrationLE models the target label distribution as a **Dirichlet Distribution**. Instead of predicting a single probability vector, the network predicts the **Evidence** $e_k$ for each class, which parameterizes the Dirichlet distribution $Dir(\alpha)$, where $\alpha_k = e_k + 1$.
 
-### 2. Information Decomposition
-We decompose the mutual information between the latent representation $Z$ and the target distribution $D$:
+- **Beliefs ($b_k$)**: The probability mass assigned to class $k$. $b_k = e_k / S$, where $S = \sum \alpha_k$.
+- **Uncertainty ($u$)**: The unassigned probability mass (background term). $u = K / S$, where $K$ is the number of classes.
+- **Objective**: We minimize the Mean Squared Error (MSE) between the expected probability distribution and the ground truth labels, plus a variance regularization term.
 
-$$ I(Z; D) \approx I(Z; L) + I(Z; G) $$
+### 3. HybridLEVI
+**HybridLEVI** combines the best of both worlds:
+1.  **VAE Backbone**: Learns a robust, regularized latent space $z$ via LEVI's variational objective.
+2.  **Concentration Head**: The decoder predicts Evidence $e$ from $z$, allowing for explicit uncertainty quantification alongside label prediction.
 
-The objective function maximizes this information while compressing the input $X$:
+This results in a model that is both generative (good feature learning) and uncertainty-aware (robust predictions).
 
-$$ \mathcal{L}_{LIB} = \underbrace{I(Z; L)}_{\text{Label Fit}} + \underbrace{I(Z; G)}_{\text{Gap Recovery}} - \beta \underbrace{I(Z; X)}_{\text{Compression}} $$
-
-### 3. Final Objective Function
-The total loss function minimized during training is:
-
-$$ \mathcal{L}_{total} = \mathcal{L}_{CE}(\hat{L}, L) + \beta D_{KL}(p(z|x) || \mathcal{N}(0,I)) + \lambda_{gap} \mathcal{L}_{gap} + \lambda_{spatial} \mathcal{L}_{spatial} $$
-
-where $\mathcal{L}_{spatial}$ is our custom addition for spatial transcriptomics, penalizing distributional divergence between spatial neighbors.
-
-### 4. Framework Schematic
+### 4. HybridLEVI Architecture Schematic
 
 ```mermaid
 graph TD
-    %% Phase 1: Label Enhancement
-    subgraph "Phase 1: Label Enhancement (Data Curation)"
-        Input_X[Gene Expression] --> LE_Model[LabelEnhancer]
-        Input_L[Logical Labels] --> LE_Model
-        LE_Model -->|Recover| True_Dist[Soft Label Distributions]
+    %% Encoder Section
+    subgraph "Encoder (VAE)"
+        Input_X[Input X] -->|Conv2D / MLP| Hidden[Hidden Layers]
+        Hidden --> Mu[Mean μ]
+        Hidden --> LogVar[LogVar σ²]
+        Mu & LogVar -->|Reparameterize| Z((Latent Z))
+    end
+
+    %% Decoders Section
+    subgraph "Dual Decoders"
+        Z -->|Decoder X| Rec_X[Reconstruction X̂]
+        Z -->|Decoder Evidence| Evidence[Evidence e]
+        Evidence -->|Softplus + 1| Alpha[Concentration α]
+    end
+
+    %% Output & Loss Section
+    subgraph "Outputs & Objectives"
+        Alpha -->|Normalization| Beliefs[Beliefs b]
+        Alpha -->|Inverse Sum| Uncertainty[Uncertainty u]
         
-        %% Internal logic of LE (simplified)
-        subgraph "LabelEnhancer Internals"
-            LE_Model -.->|IB Principle| Latent_Z((Latent Z))
-            Latent_Z -.->|Reconstruct| Rec_L[Logical L]
-            Latent_Z -.->|Predict| Pred_D[Distribution D]
-        end
+        Rec_X -.->|MSE| Loss_Rec[Reconstruction Loss]
+        Evidence -.->|CDL Loss| Loss_CDL[Concentration Loss]
+        Z -.->|KL Divergence| Loss_KL[Regularization]
     end
 
-    %% Phase 2: LDL Framework Training
-    subgraph "Phase 2: LDL Framework Training"
-        Input_X --> LDL_Net[Deep LDL Network]
-        True_Dist -->|Supervision| LDL_Net
-        LDL_Net -->|Learn Mapping| Learned_Map[X -> D Mapping]
-    end
+    %% Relationships
+    Input_X -.-> Loss_Rec
+    True_Labels[True Labels L] -.-> Loss_CDL
 
-    %% Phase 3: Downstream Applications
-    subgraph "Phase 3: Applications"
-        Learned_Map -->|Inference| New_Dist[Predicted Distributions]
-        
-        New_Dist -->|Entropy Threshold| Unknown[Unknown/Novel Cell Types]
-        New_Dist -->|Max Probability| Annot[Refined Annotation]
-        New_Dist -->|Spatial Aggregation| Deconv[Spatial Deconvolution]
-    end
-
-    style True_Dist fill:#f9f,stroke:#333,stroke-width:2px
-    style New_Dist fill:#bbf,stroke:#333,stroke-width:2px
+    %% Styling
+    style Z fill:#444,stroke:#333,stroke-width:2px
+    style Beliefs fill:#444,stroke:#333,stroke-width:2px
+    style Uncertainty fill:#444,stroke:#333,stroke-width:2px
 ```
 
 ## Implementation Details

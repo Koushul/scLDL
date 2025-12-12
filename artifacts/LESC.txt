@@ -1,0 +1,2491 @@
+Directory structure:
+└── tanghaoyu258-aaai2020lesc/
+    ├── README.md
+    ├── binaryzation.m
+    ├── Demo_artificial_parameter_adjusting.m
+    ├── Demo_Human_gene_parameter_adjusting.m
+    ├── Demo_MOVIE_parameter_adjusting.m
+    ├── Demo_Natural_Scene_parameter_adjusting.m
+    ├── Demo_SBU_3DFE_parameter_adjusting.m
+    ├── Demo_SJAFFE_parameter_adjusting.m
+    ├── Demo_Yeast_alpha_parameter_adjusting.m
+    ├── Demo_Yeast_cdc_parameter_adjusting.m
+    ├── Demo_Yeast_cold_parameter_adjusting.m
+    ├── Demo_Yeast_diau_parameter_adjusting.m
+    ├── Demo_Yeast_dtt_parameter_adjusting.m
+    ├── Demo_Yeast_elu_parameter_adjusting.m
+    ├── Demo_Yeast_heat_parameter_adjusting.m
+    ├── Demo_Yeast_spo5_parameter_adjusting.m
+    ├── Demo_Yeast_spo_parameter_adjusting.m
+    ├── Demo_Yeast_spoem_parameter_adjusting.m
+    ├── fminlbfgsGLLE.m
+    ├── GLLE.m
+    ├── kernelmatrix.m
+    ├── L2_distance.m
+    ├── LEbfgsProcess.m
+    ├── LICENSE
+    ├── lrra.m
+    ├── solve_l1l2.m
+    ├── solve_lrr.m
+    ├── LDL_DataSets/
+    │   ├── Artificial_binary.mat
+    │   ├── Movie_binary.mat
+    │   ├── Natural_Scene_binary.mat
+    │   ├── SBU_3DFE_binary.mat
+    │   ├── Yeast_alpha_binary.mat
+    │   ├── Yeast_cdc_binary.mat
+    │   ├── Yeast_cold_binary.mat
+    │   ├── Yeast_diau_binary.mat
+    │   ├── Yeast_dtt_binary.mat
+    │   ├── Yeast_elu_binary.mat
+    │   ├── Yeast_heat_binary.mat
+    │   ├── Yeast_spo5_binary.mat
+    │   ├── Yeast_spo_binary.mat
+    │   └── Yeast_spoem_binary.mat
+    └── measures/
+        ├── canberra.m
+        ├── chebyshev.m
+        ├── clark.m
+        ├── cosine.m
+        ├── intersection.m
+        └── kldist.m
+
+================================================
+FILE: README.md
+================================================
+# AAAI2020LESC
+
+CODE OF PAPER AAAI2020 Label enhancement with sample correlations via low-rank representation https://ojs.aaai.org/index.php/AAAI/article/view/6053
+
+Please cite this paper if you find the code is helpful
+
+@article{Tang_Zhu_Zheng_Wang_Pang_Li_2020, title={Label Enhancement with Sample Correlations via Low-Rank Representation}, volume={34}, url={https://ojs.aaai.org/index.php/AAAI/article/view/6053}, number={04}, journal={Proceedings of the AAAI Conference on Artificial Intelligence}, author={Tang, Haoyu and Zhu, Jihua and Zheng, Qinghai and Wang, Jun and Pang, Shanmin and Li, Zhongyu}, year={2020}, month={Apr.}, pages={5932-5939} }
+
+
+
+================================================
+FILE: binaryzation.m
+================================================
+function [ y ] = binaryzation( d , t )
+d = d';
+y=zeros(size(d,1),size(d,2));
+[B,I]=sort(d,1,'descend');
+
+for n=1:size(d,2)
+    temp=0;
+    for m=1:size(B,1)
+        temp=temp+B(m,n);
+        if temp>t
+              break;
+        end
+    end
+    for z=1:m
+        y(I(z,n),n)=1;
+    end
+end
+
+y=y';
+end
+
+
+
+================================================
+FILE: Demo_artificial_parameter_adjusting.m
+================================================
+clc
+clear
+addpath(genpath(pwd));
+
+dataset={'LDL_DataSets\Movie'};
+T=strcat(dataset(1),'.mat');
+load(T{1,1});
+labelDistribution = labels;
+T=strcat(dataset(1),'_binary.mat');
+load(T{1,1});
+
+features = zscore(features);
+
+results_all = ones(64,6);
+beta_list = [0.0001,0.001,0.01,0.1,1,10,100,1000];
+lambda_list = [0.0001,0.001,0.01,0.1,1,10,100,1000];
+index = 0;
+for i = 1:8
+    for j =1:8
+        index = index+1;
+        fprintf('-----start calculating low rank representation for ground label\n');
+        beta = beta_list(i); % tradeoff parameter of LRR
+        [C_low_rank,~] = solve_lrr(features',beta);
+        fprintf('-----finish calculating low rank representation for ground labels\n');
+        
+        lambda = lambda_list(j);
+        
+        [W, numerical] = GLLE(logicalLabel,features,C_low_rank,lambda);
+        distribution = (softmax(numerical'))';
+        
+        results_all(index,1) = chebyshev(distribution,labelDistribution);
+        results_all(index,2) = clark(distribution,labelDistribution);
+        results_all(index,3) = canberra(distribution,labelDistribution);
+        results_all(index,4) = kldist(distribution,labelDistribution);
+        results_all(index,5) = cosine(distribution,labelDistribution);
+        results_all(index,6) = intersection(distribution,labelDistribution);
+        
+        fprintf('--------------------------------------\n');
+        fprintf('beta:%f, lambda:%f\n',beta,lambda);
+        fprintf('\tchebyshev   :%f\n',results_all(index,1));
+        fprintf('\tclark       :%f\n',results_all(index,2));
+        fprintf('\tcanberra    :%f\n',results_all(index,3));
+        fprintf('\tkldist      :%f\n',results_all(index,4));
+        fprintf('\tcosine      :%f\n',results_all(index,5));
+        fprintf('\tintersection:%f\n',results_all(index,6));
+        
+    end
+end
+
+
+
+
+
+
+================================================
+FILE: Demo_Human_gene_parameter_adjusting.m
+================================================
+clc
+clear
+addpath(genpath(pwd));
+
+dataset={'LDL_DataSets\Human_Gene'};
+T=strcat(dataset(1),'.mat');
+load(T{1,1});
+labelDistribution = labels;
+T=strcat(dataset(1),'_binary.mat');
+load(T{1,1});
+
+features = zscore(features);
+
+results_all = ones(64,6);
+beta_list = [0.0001,0.001,0.01,0.1,1,10,100,1000];
+lambda_list = [0.0001,0.001,0.01,0.1,1,10,100,1000];
+index = 0;
+for i = 1:8
+    for j =1:8
+        index = index+1;
+        fprintf('-----start calculating low rank representation for ground label\n');
+        beta = beta_list(i); % tradeoff parameter of LRR
+        [C_low_rank,~] = solve_lrr(features',beta);
+        fprintf('-----finish calculating low rank representation for ground labels\n');
+        
+        lambda = lambda_list(j);
+        
+        [W, numerical] = GLLE(logicalLabel,features,C_low_rank,lambda);
+        distribution = (softmax(numerical'))';
+        
+        results_all(index,1) = chebyshev(distribution,labelDistribution);
+        results_all(index,2) = clark(distribution,labelDistribution);
+        results_all(index,3) = canberra(distribution,labelDistribution);
+        results_all(index,4) = kldist(distribution,labelDistribution);
+        results_all(index,5) = cosine(distribution,labelDistribution);
+        results_all(index,6) = intersection(distribution,labelDistribution);
+        
+        fprintf('--------------------------------------\n');
+        fprintf('beta:%f, lambda:%f\n',beta,lambda);
+        fprintf('\tchebyshev   :%f\n',results_all(index,1));
+        fprintf('\tclark       :%f\n',results_all(index,2));
+        fprintf('\tcanberra    :%f\n',results_all(index,3));
+        fprintf('\tkldist      :%f\n',results_all(index,4));
+        fprintf('\tcosine      :%f\n',results_all(index,5));
+        fprintf('\tintersection:%f\n',results_all(index,6));
+        
+    end
+end
+
+
+
+
+
+
+================================================
+FILE: Demo_MOVIE_parameter_adjusting.m
+================================================
+clc
+clear
+addpath(genpath(pwd));
+
+dataset={'LDL_DataSets\Movie'};
+T=strcat(dataset(1),'.mat');
+load(T{1,1});
+labelDistribution = labels;
+T=strcat(dataset(1),'_binary.mat');
+load(T{1,1});
+
+features = zscore(features);
+
+results_all = ones(64,6);
+beta_list = [0.0001,0.001,0.01,0.1,1,10,100,1000];
+lambda_list = [0.0001,0.001,0.01,0.1,1,10,100,1000];
+index = 0;
+for i = 1:8
+    for j =1:8
+        index = index+1;
+        fprintf('-----start calculating low rank representation for ground label\n');
+        beta = beta_list(i); % tradeoff parameter of LRR
+        [C_low_rank,~] = solve_lrr(features',beta);
+        fprintf('-----finish calculating low rank representation for ground labels\n');
+        
+        lambda = lambda_list(j);
+        
+        [W, numerical] = GLLE(logicalLabel,features,C_low_rank,lambda);
+        distribution = (softmax(numerical'))';
+        
+        results_all(index,1) = chebyshev(distribution,labelDistribution);
+        results_all(index,2) = clark(distribution,labelDistribution);
+        results_all(index,3) = canberra(distribution,labelDistribution);
+        results_all(index,4) = kldist(distribution,labelDistribution);
+        results_all(index,5) = cosine(distribution,labelDistribution);
+        results_all(index,6) = intersection(distribution,labelDistribution);
+        
+        fprintf('--------------------------------------\n');
+        fprintf('beta:%f, lambda:%f\n',beta,lambda);
+        fprintf('\tchebyshev   :%f\n',results_all(index,1));
+        fprintf('\tclark       :%f\n',results_all(index,2));
+        fprintf('\tcanberra    :%f\n',results_all(index,3));
+        fprintf('\tkldist      :%f\n',results_all(index,4));
+        fprintf('\tcosine      :%f\n',results_all(index,5));
+        fprintf('\tintersection:%f\n',results_all(index,6));
+        
+    end
+end
+
+
+
+
+
+
+================================================
+FILE: Demo_Natural_Scene_parameter_adjusting.m
+================================================
+clc
+clear
+addpath(genpath(pwd));
+
+dataset={'LDL_DataSets\Natural_Scene'};
+T=strcat(dataset(1),'.mat');
+load(T{1,1});
+labelDistribution = labels;
+T=strcat(dataset(1),'_binary.mat');
+load(T{1,1});
+
+features = zscore(features);
+
+results_all = ones(64,6);
+beta_list = [0.0001,0.001,0.01,0.1,1,10,100,1000];
+lambda_list = [0.0001,0.001,0.01,0.1,1,10,100,1000];
+index = 0;
+for i = 1:8
+    for j =1:8
+        index = index+1;
+        fprintf('-----start calculating low rank representation for ground label\n');
+        beta = beta_list(i); % tradeoff parameter of LRR
+        [C_low_rank,~] = solve_lrr(features',beta);
+        fprintf('-----finish calculating low rank representation for ground labels\n');
+        
+        lambda = lambda_list(j);
+        
+        [W, numerical] = GLLE(logicalLabel,features,C_low_rank,lambda);
+        distribution = (softmax(numerical'))';
+        
+        results_all(index,1) = chebyshev(distribution,labelDistribution);
+        results_all(index,2) = clark(distribution,labelDistribution);
+        results_all(index,3) = canberra(distribution,labelDistribution);
+        results_all(index,4) = kldist(distribution,labelDistribution);
+        results_all(index,5) = cosine(distribution,labelDistribution);
+        results_all(index,6) = intersection(distribution,labelDistribution);
+        
+        fprintf('--------------------------------------\n');
+        fprintf('beta:%f, lambda:%f\n',beta,lambda);
+        fprintf('\tchebyshev   :%f\n',results_all(index,1));
+        fprintf('\tclark       :%f\n',results_all(index,2));
+        fprintf('\tcanberra    :%f\n',results_all(index,3));
+        fprintf('\tkldist      :%f\n',results_all(index,4));
+        fprintf('\tcosine      :%f\n',results_all(index,5));
+        fprintf('\tintersection:%f\n',results_all(index,6));
+        
+    end
+end
+
+
+
+
+
+
+================================================
+FILE: Demo_SBU_3DFE_parameter_adjusting.m
+================================================
+clc
+clear
+addpath(genpath(pwd));
+
+dataset={'LDL_DataSets\SBU_3DFE'};
+T=strcat(dataset(1),'.mat');
+load(T{1,1});
+labelDistribution = labels;
+T=strcat(dataset(1),'_binary.mat');
+load(T{1,1});
+
+features = zscore(features);
+
+results_all = ones(64,6);
+beta_list = [0.0001,0.001,0.01,0.1,1,10,100,1000];
+lambda_list = [0.0001,0.001,0.01,0.1,1,10,100,1000];
+index = 0;
+for i = 1:8
+    for j =1:8
+        index = index+1;
+        fprintf('-----start calculating low rank representation for ground label\n');
+        beta = beta_list(i); % tradeoff parameter of LRR
+        [C_low_rank,~] = solve_lrr(features',beta);
+        fprintf('-----finish calculating low rank representation for ground labels\n');
+        
+        lambda = lambda_list(j);
+        
+        [W, numerical] = GLLE(logicalLabel,features,C_low_rank,lambda);
+        distribution = (softmax(numerical'))';
+        
+        results_all(index,1) = chebyshev(distribution,labelDistribution);
+        results_all(index,2) = clark(distribution,labelDistribution);
+        results_all(index,3) = canberra(distribution,labelDistribution);
+        results_all(index,4) = kldist(distribution,labelDistribution);
+        results_all(index,5) = cosine(distribution,labelDistribution);
+        results_all(index,6) = intersection(distribution,labelDistribution);
+        
+        fprintf('--------------------------------------\n');
+        fprintf('beta:%f, lambda:%f\n',beta,lambda);
+        fprintf('\tchebyshev   :%f\n',results_all(index,1));
+        fprintf('\tclark       :%f\n',results_all(index,2));
+        fprintf('\tcanberra    :%f\n',results_all(index,3));
+        fprintf('\tkldist      :%f\n',results_all(index,4));
+        fprintf('\tcosine      :%f\n',results_all(index,5));
+        fprintf('\tintersection:%f\n',results_all(index,6));
+        
+    end
+end
+
+
+
+
+
+
+================================================
+FILE: Demo_SJAFFE_parameter_adjusting.m
+================================================
+clc
+clear
+addpath(genpath(pwd));
+
+dataset={'LDL_DataSets\SJAFFE'};
+T=strcat(dataset(1),'.mat');
+load(T{1,1});
+%labelDistribution = labels;
+T=strcat(dataset(1),'_binary.mat');
+load(T{1,1});
+
+features = zscore(features);
+
+results_all = ones(64,6);
+beta_list = [0.0001,0.001,0.01,0.1,1,10,100,1000];
+lambda_list = [0.0001,0.001,0.01,0.1,1,10,100,1000];
+index = 0;
+for i = 1:8
+    for j =1:8
+        index = index+1;
+        fprintf('-----start calculating low rank representation for ground label\n');
+        beta = beta_list(i); % tradeoff parameter of LRR
+        [C_low_rank,~] = solve_lrr(features',beta);
+        fprintf('-----finish calculating low rank representation for ground labels\n');
+        
+        lambda = lambda_list(j);
+        
+        [W, numerical] = GLLE(logicalLabel,features,C_low_rank,lambda);
+        distribution = (softmax(numerical'))';
+        
+        results_all(index,1) = chebyshev(distribution,labelDistribution);
+        results_all(index,2) = clark(distribution,labelDistribution);
+        results_all(index,3) = canberra(distribution,labelDistribution);
+        results_all(index,4) = kldist(distribution,labelDistribution);
+        results_all(index,5) = cosine(distribution,labelDistribution);
+        results_all(index,6) = intersection(distribution,labelDistribution);
+        
+        fprintf('--------------------------------------\n');
+        fprintf('beta:%f, lambda:%f\n',beta,lambda);
+        fprintf('\tchebyshev   :%f\n',results_all(index,1));
+        fprintf('\tclark       :%f\n',results_all(index,2));
+        fprintf('\tcanberra    :%f\n',results_all(index,3));
+        fprintf('\tkldist      :%f\n',results_all(index,4));
+        fprintf('\tcosine      :%f\n',results_all(index,5));
+        fprintf('\tintersection:%f\n',results_all(index,6));
+        
+    end
+end
+
+
+
+
+
+
+================================================
+FILE: Demo_Yeast_alpha_parameter_adjusting.m
+================================================
+clc
+clear
+addpath(genpath(pwd));
+
+dataset={'LDL_DataSets\Yeast_alpha'};
+T=strcat(dataset(1),'.mat');
+load(T{1,1});
+labelDistribution = labels;
+T=strcat(dataset(1),'_binary.mat');
+load(T{1,1});
+
+features = zscore(features);
+
+results_all = ones(64,6);
+beta_list = [0.0001,0.001,0.01,0.1,1,10,100,1000];
+lambda_list = [0.0001,0.001,0.01,0.1,1,10,100,1000];
+index = 0;
+for i = 1:8
+    for j =1:8
+        index = index+1;
+        fprintf('-----start calculating low rank representation for ground label\n');
+        beta = beta_list(i); % tradeoff parameter of LRR
+        [C_low_rank,~] = solve_lrr(features',beta);
+        fprintf('-----finish calculating low rank representation for ground labels\n');
+        
+        lambda = lambda_list(j);
+        
+        [W, numerical] = GLLE(logicalLabel,features,C_low_rank,lambda);
+        distribution = (softmax(numerical'))';
+        
+        results_all(index,1) = chebyshev(distribution,labelDistribution);
+        results_all(index,2) = clark(distribution,labelDistribution);
+        results_all(index,3) = canberra(distribution,labelDistribution);
+        results_all(index,4) = kldist(distribution,labelDistribution);
+        results_all(index,5) = cosine(distribution,labelDistribution);
+        results_all(index,6) = intersection(distribution,labelDistribution);
+        
+        fprintf('--------------------------------------\n');
+        fprintf('beta:%f, lambda:%f\n',beta,lambda);
+        fprintf('\tchebyshev   :%f\n',results_all(index,1));
+        fprintf('\tclark       :%f\n',results_all(index,2));
+        fprintf('\tcanberra    :%f\n',results_all(index,3));
+        fprintf('\tkldist      :%f\n',results_all(index,4));
+        fprintf('\tcosine      :%f\n',results_all(index,5));
+        fprintf('\tintersection:%f\n',results_all(index,6));
+        
+    end
+end
+
+
+
+
+
+
+================================================
+FILE: Demo_Yeast_cdc_parameter_adjusting.m
+================================================
+clc
+clear
+addpath(genpath(pwd));
+
+dataset={'LDL_DataSets\Yeast_cdc'};
+T=strcat(dataset(1),'.mat');
+load(T{1,1});
+labelDistribution = labels;
+T=strcat(dataset(1),'_binary.mat');
+load(T{1,1});
+
+features = zscore(features);
+
+results_all = ones(64,6);
+beta_list = [0.0001,0.001,0.01,0.1,1,10,100,1000];
+lambda_list = [0.0001,0.001,0.01,0.1,1,10,100,1000];
+index = 0;
+for i = 1:8
+    for j =1:8
+        index = index+1;
+        fprintf('-----start calculating low rank representation for ground label\n');
+        beta = beta_list(i); % tradeoff parameter of LRR
+        [C_low_rank,~] = solve_lrr(features',beta);
+        fprintf('-----finish calculating low rank representation for ground labels\n');
+        
+        lambda = lambda_list(j);
+        
+        [W, numerical] = GLLE(logicalLabel,features,C_low_rank,lambda);
+        distribution = (softmax(numerical'))';
+        
+        results_all(index,1) = chebyshev(distribution,labelDistribution);
+        results_all(index,2) = clark(distribution,labelDistribution);
+        results_all(index,3) = canberra(distribution,labelDistribution);
+        results_all(index,4) = kldist(distribution,labelDistribution);
+        results_all(index,5) = cosine(distribution,labelDistribution);
+        results_all(index,6) = intersection(distribution,labelDistribution);
+        
+        fprintf('--------------------------------------\n');
+        fprintf('beta:%f, lambda:%f\n',beta,lambda);
+        fprintf('\tchebyshev   :%f\n',results_all(index,1));
+        fprintf('\tclark       :%f\n',results_all(index,2));
+        fprintf('\tcanberra    :%f\n',results_all(index,3));
+        fprintf('\tkldist      :%f\n',results_all(index,4));
+        fprintf('\tcosine      :%f\n',results_all(index,5));
+        fprintf('\tintersection:%f\n',results_all(index,6));
+        
+    end
+end
+
+
+
+
+
+
+================================================
+FILE: Demo_Yeast_cold_parameter_adjusting.m
+================================================
+clc
+clear
+addpath(genpath(pwd));
+
+dataset={'LDL_DataSets\Yeast_cold'};
+T=strcat(dataset(1),'.mat');
+load(T{1,1});
+labelDistribution = labels;
+T=strcat(dataset(1),'_binary.mat');
+load(T{1,1});
+
+features = zscore(features);
+
+results_all = ones(64,6);
+beta_list = [0.0001,0.001,0.01,0.1,1,10,100,1000];
+lambda_list = [0.0001,0.001,0.01,0.1,1,10,100,1000];
+index = 0;
+for i = 1:8
+    for j =1:8
+        index = index+1;
+        fprintf('-----start calculating low rank representation for ground label\n');
+        beta = beta_list(i); % tradeoff parameter of LRR
+        [C_low_rank,~] = solve_lrr(features',beta);
+        fprintf('-----finish calculating low rank representation for ground labels\n');
+        
+        lambda = lambda_list(j);
+        
+        [W, numerical] = GLLE(logicalLabel,features,C_low_rank,lambda);
+        distribution = (softmax(numerical'))';
+        
+        results_all(index,1) = chebyshev(distribution,labelDistribution);
+        results_all(index,2) = clark(distribution,labelDistribution);
+        results_all(index,3) = canberra(distribution,labelDistribution);
+        results_all(index,4) = kldist(distribution,labelDistribution);
+        results_all(index,5) = cosine(distribution,labelDistribution);
+        results_all(index,6) = intersection(distribution,labelDistribution);
+        
+        fprintf('--------------------------------------\n');
+        fprintf('beta:%f, lambda:%f\n',beta,lambda);
+        fprintf('\tchebyshev   :%f\n',results_all(index,1));
+        fprintf('\tclark       :%f\n',results_all(index,2));
+        fprintf('\tcanberra    :%f\n',results_all(index,3));
+        fprintf('\tkldist      :%f\n',results_all(index,4));
+        fprintf('\tcosine      :%f\n',results_all(index,5));
+        fprintf('\tintersection:%f\n',results_all(index,6));
+        
+    end
+end
+
+
+
+
+
+
+================================================
+FILE: Demo_Yeast_diau_parameter_adjusting.m
+================================================
+clc
+clear
+addpath(genpath(pwd));
+
+dataset={'LDL_DataSets\Yeast_diau'};
+T=strcat(dataset(1),'.mat');
+load(T{1,1});
+labelDistribution = labels;
+T=strcat(dataset(1),'_binary.mat');
+load(T{1,1});
+
+features = zscore(features);
+
+results_all = ones(64,6);
+beta_list = [0.0001,0.001,0.01,0.1,1,10,100,1000];
+lambda_list = [0.0001,0.001,0.01,0.1,1,10,100,1000];
+index = 0;
+for i = 1:8
+    for j =1:8
+        index = index+1;
+        fprintf('-----start calculating low rank representation for ground label\n');
+        beta = beta_list(i); % tradeoff parameter of LRR
+        [C_low_rank,~] = solve_lrr(features',beta);
+        fprintf('-----finish calculating low rank representation for ground labels\n');
+        
+        lambda = lambda_list(j);
+        
+        [W, numerical] = GLLE(logicalLabel,features,C_low_rank,lambda);
+        distribution = (softmax(numerical'))';
+        
+        results_all(index,1) = chebyshev(distribution,labelDistribution);
+        results_all(index,2) = clark(distribution,labelDistribution);
+        results_all(index,3) = canberra(distribution,labelDistribution);
+        results_all(index,4) = kldist(distribution,labelDistribution);
+        results_all(index,5) = cosine(distribution,labelDistribution);
+        results_all(index,6) = intersection(distribution,labelDistribution);
+        
+        fprintf('--------------------------------------\n');
+        fprintf('beta:%f, lambda:%f\n',beta,lambda);
+        fprintf('\tchebyshev   :%f\n',results_all(index,1));
+        fprintf('\tclark       :%f\n',results_all(index,2));
+        fprintf('\tcanberra    :%f\n',results_all(index,3));
+        fprintf('\tkldist      :%f\n',results_all(index,4));
+        fprintf('\tcosine      :%f\n',results_all(index,5));
+        fprintf('\tintersection:%f\n',results_all(index,6));
+        
+    end
+end
+
+
+
+
+
+
+================================================
+FILE: Demo_Yeast_dtt_parameter_adjusting.m
+================================================
+clc
+clear
+addpath(genpath(pwd));
+
+dataset={'LDL_DataSets\Yeast_dtt'};
+T=strcat(dataset(1),'.mat');
+load(T{1,1});
+labelDistribution = labels;
+T=strcat(dataset(1),'_binary.mat');
+load(T{1,1});
+
+features = zscore(features);
+
+results_all = ones(64,6);
+beta_list = [0.0001,0.001,0.01,0.1,1,10,100,1000];
+lambda_list = [0.0001,0.001,0.01,0.1,1,10,100,1000];
+index = 0;
+for i = 1:8
+    for j =1:8
+        index = index+1;
+        fprintf('-----start calculating low rank representation for ground label\n');
+        beta = beta_list(i); % tradeoff parameter of LRR
+        [C_low_rank,~] = solve_lrr(features',beta);
+        fprintf('-----finish calculating low rank representation for ground labels\n');
+        
+        lambda = lambda_list(j);
+        
+        [W, numerical] = GLLE(logicalLabel,features,C_low_rank,lambda);
+        distribution = (softmax(numerical'))';
+        
+        results_all(index,1) = chebyshev(distribution,labelDistribution);
+        results_all(index,2) = clark(distribution,labelDistribution);
+        results_all(index,3) = canberra(distribution,labelDistribution);
+        results_all(index,4) = kldist(distribution,labelDistribution);
+        results_all(index,5) = cosine(distribution,labelDistribution);
+        results_all(index,6) = intersection(distribution,labelDistribution);
+        
+        fprintf('--------------------------------------\n');
+        fprintf('beta:%f, lambda:%f\n',beta,lambda);
+        fprintf('\tchebyshev   :%f\n',results_all(index,1));
+        fprintf('\tclark       :%f\n',results_all(index,2));
+        fprintf('\tcanberra    :%f\n',results_all(index,3));
+        fprintf('\tkldist      :%f\n',results_all(index,4));
+        fprintf('\tcosine      :%f\n',results_all(index,5));
+        fprintf('\tintersection:%f\n',results_all(index,6));
+        
+    end
+end
+
+
+
+
+
+
+================================================
+FILE: Demo_Yeast_elu_parameter_adjusting.m
+================================================
+clc
+clear
+addpath(genpath(pwd));
+
+dataset={'LDL_DataSets\Yeast_elu'};
+T=strcat(dataset(1),'.mat');
+load(T{1,1});
+labelDistribution = labels;
+T=strcat(dataset(1),'_binary.mat');
+load(T{1,1});
+
+features = zscore(features);
+
+results_all = ones(64,6);
+beta_list = [0.0001,0.001,0.01,0.1,1,10,100,1000];
+lambda_list = [0.0001,0.001,0.01,0.1,1,10,100,1000];
+index = 0;
+for i = 1:8
+    for j =1:8
+        index = index+1;
+        fprintf('-----start calculating low rank representation for ground label\n');
+        beta = beta_list(i); % tradeoff parameter of LRR
+        [C_low_rank,~] = solve_lrr(features',beta);
+        fprintf('-----finish calculating low rank representation for ground labels\n');
+        
+        lambda = lambda_list(j);
+        
+        [W, numerical] = GLLE(logicalLabel,features,C_low_rank,lambda);
+        distribution = (softmax(numerical'))';
+        
+        results_all(index,1) = chebyshev(distribution,labelDistribution);
+        results_all(index,2) = clark(distribution,labelDistribution);
+        results_all(index,3) = canberra(distribution,labelDistribution);
+        results_all(index,4) = kldist(distribution,labelDistribution);
+        results_all(index,5) = cosine(distribution,labelDistribution);
+        results_all(index,6) = intersection(distribution,labelDistribution);
+        
+        fprintf('--------------------------------------\n');
+        fprintf('beta:%f, lambda:%f\n',beta,lambda);
+        fprintf('\tchebyshev   :%f\n',results_all(index,1));
+        fprintf('\tclark       :%f\n',results_all(index,2));
+        fprintf('\tcanberra    :%f\n',results_all(index,3));
+        fprintf('\tkldist      :%f\n',results_all(index,4));
+        fprintf('\tcosine      :%f\n',results_all(index,5));
+        fprintf('\tintersection:%f\n',results_all(index,6));
+        
+    end
+end
+
+
+
+
+
+
+================================================
+FILE: Demo_Yeast_heat_parameter_adjusting.m
+================================================
+clc
+clear
+addpath(genpath(pwd));
+
+dataset={'LDL_DataSets\Yeast_heat'};
+T=strcat(dataset(1),'.mat');
+load(T{1,1});
+labelDistribution = labels;
+T=strcat(dataset(1),'_binary.mat');
+load(T{1,1});
+
+features = zscore(features);
+
+results_all = ones(64,6);
+beta_list = [0.0001,0.001,0.01,0.1,1,10,100,1000];
+lambda_list = [0.0001,0.001,0.01,0.1,1,10,100,1000];
+index = 0;
+for i = 1:8
+    for j =1:8
+        index = index+1;
+        fprintf('-----start calculating low rank representation for ground label\n');
+        beta = beta_list(i); % tradeoff parameter of LRR
+        [C_low_rank,~] = solve_lrr(features',beta);
+        fprintf('-----finish calculating low rank representation for ground labels\n');
+        
+        lambda = lambda_list(j);
+        
+        [W, numerical] = GLLE(logicalLabel,features,C_low_rank,lambda);
+        distribution = (softmax(numerical'))';
+        
+        results_all(index,1) = chebyshev(distribution,labelDistribution);
+        results_all(index,2) = clark(distribution,labelDistribution);
+        results_all(index,3) = canberra(distribution,labelDistribution);
+        results_all(index,4) = kldist(distribution,labelDistribution);
+        results_all(index,5) = cosine(distribution,labelDistribution);
+        results_all(index,6) = intersection(distribution,labelDistribution);
+        
+        fprintf('--------------------------------------\n');
+        fprintf('beta:%f, lambda:%f\n',beta,lambda);
+        fprintf('\tchebyshev   :%f\n',results_all(index,1));
+        fprintf('\tclark       :%f\n',results_all(index,2));
+        fprintf('\tcanberra    :%f\n',results_all(index,3));
+        fprintf('\tkldist      :%f\n',results_all(index,4));
+        fprintf('\tcosine      :%f\n',results_all(index,5));
+        fprintf('\tintersection:%f\n',results_all(index,6));
+        
+    end
+end
+
+
+
+
+
+
+================================================
+FILE: Demo_Yeast_spo5_parameter_adjusting.m
+================================================
+clc
+clear
+addpath(genpath(pwd));
+
+dataset={'LDL_DataSets\Yeast_spo5'};
+T=strcat(dataset(1),'.mat');
+load(T{1,1});
+labelDistribution = labels;
+T=strcat(dataset(1),'_binary.mat');
+load(T{1,1});
+
+features = zscore(features);
+
+results_all = ones(64,6);
+beta_list = [0.0001,0.001,0.01,0.1,1,10,100,1000];
+lambda_list = [0.0001,0.001,0.01,0.1,1,10,100,1000];
+index = 0;
+for i = 1:8
+    for j =1:8
+        index = index+1;
+        fprintf('-----start calculating low rank representation for ground label\n');
+        beta = beta_list(i); % tradeoff parameter of LRR
+        [C_low_rank,~] = solve_lrr(features',beta);
+        fprintf('-----finish calculating low rank representation for ground labels\n');
+        
+        lambda = lambda_list(j);
+        
+        [W, numerical] = GLLE(logicalLabel,features,C_low_rank,lambda);
+        distribution = (softmax(numerical'))';
+        
+        results_all(index,1) = chebyshev(distribution,labelDistribution);
+        results_all(index,2) = clark(distribution,labelDistribution);
+        results_all(index,3) = canberra(distribution,labelDistribution);
+        results_all(index,4) = kldist(distribution,labelDistribution);
+        results_all(index,5) = cosine(distribution,labelDistribution);
+        results_all(index,6) = intersection(distribution,labelDistribution);
+        
+        fprintf('--------------------------------------\n');
+        fprintf('beta:%f, lambda:%f\n',beta,lambda);
+        fprintf('\tchebyshev   :%f\n',results_all(index,1));
+        fprintf('\tclark       :%f\n',results_all(index,2));
+        fprintf('\tcanberra    :%f\n',results_all(index,3));
+        fprintf('\tkldist      :%f\n',results_all(index,4));
+        fprintf('\tcosine      :%f\n',results_all(index,5));
+        fprintf('\tintersection:%f\n',results_all(index,6));
+        
+    end
+end
+
+
+
+
+
+
+================================================
+FILE: Demo_Yeast_spo_parameter_adjusting.m
+================================================
+clc
+clear
+addpath(genpath(pwd));
+
+dataset={'LDL_DataSets\Yeast_spo'};
+T=strcat(dataset(1),'.mat');
+load(T{1,1});
+labelDistribution = labels;
+T=strcat(dataset(1),'_binary.mat');
+load(T{1,1});
+
+features = zscore(features);
+
+results_all = ones(64,6);
+beta_list = [0.0001,0.001,0.01,0.1,1,10,100,1000];
+lambda_list = [0.0001,0.001,0.01,0.1,1,10,100,1000];
+index = 0;
+for i = 1:8
+    for j =1:8
+        index = index+1;
+        fprintf('-----start calculating low rank representation for ground label\n');
+        beta = beta_list(i); % tradeoff parameter of LRR
+        [C_low_rank,~] = solve_lrr(features',beta);
+        fprintf('-----finish calculating low rank representation for ground labels\n');
+        
+        lambda = lambda_list(j);
+        
+        [W, numerical] = GLLE(logicalLabel,features,C_low_rank,lambda);
+        distribution = (softmax(numerical'))';
+        
+        results_all(index,1) = chebyshev(distribution,labelDistribution);
+        results_all(index,2) = clark(distribution,labelDistribution);
+        results_all(index,3) = canberra(distribution,labelDistribution);
+        results_all(index,4) = kldist(distribution,labelDistribution);
+        results_all(index,5) = cosine(distribution,labelDistribution);
+        results_all(index,6) = intersection(distribution,labelDistribution);
+        
+        fprintf('--------------------------------------\n');
+        fprintf('beta:%f, lambda:%f\n',beta,lambda);
+        fprintf('\tchebyshev   :%f\n',results_all(index,1));
+        fprintf('\tclark       :%f\n',results_all(index,2));
+        fprintf('\tcanberra    :%f\n',results_all(index,3));
+        fprintf('\tkldist      :%f\n',results_all(index,4));
+        fprintf('\tcosine      :%f\n',results_all(index,5));
+        fprintf('\tintersection:%f\n',results_all(index,6));
+        
+    end
+end
+
+
+
+
+
+
+================================================
+FILE: Demo_Yeast_spoem_parameter_adjusting.m
+================================================
+clc
+clear
+addpath(genpath(pwd));
+
+dataset={'LDL_DataSets\Yeast_spoem'};
+T=strcat(dataset(1),'.mat');
+load(T{1,1});
+labelDistribution = labels;
+T=strcat(dataset(1),'_binary.mat');
+load(T{1,1});
+
+features = zscore(features);
+
+results_all = ones(64,6);
+beta_list = [0.0001,0.001,0.01,0.1,1,10,100,1000];
+lambda_list = [0.0001,0.001,0.01,0.1,1,10,100,1000];
+index = 0;
+for i = 1:8
+    for j =1:8
+        index = index+1;
+        fprintf('-----start calculating low rank representation for ground label\n');
+        beta = beta_list(i); % tradeoff parameter of LRR
+        [C_low_rank,~] = solve_lrr(features',beta);
+        fprintf('-----finish calculating low rank representation for ground labels\n');
+        
+        lambda = lambda_list(j);
+        
+        [W, numerical] = GLLE(logicalLabel,features,C_low_rank,lambda);
+        distribution = (softmax(numerical'))';
+        
+        results_all(index,1) = chebyshev(distribution,labelDistribution);
+        results_all(index,2) = clark(distribution,labelDistribution);
+        results_all(index,3) = canberra(distribution,labelDistribution);
+        results_all(index,4) = kldist(distribution,labelDistribution);
+        results_all(index,5) = cosine(distribution,labelDistribution);
+        results_all(index,6) = intersection(distribution,labelDistribution);
+        
+        fprintf('--------------------------------------\n');
+        fprintf('beta:%f, lambda:%f\n',beta,lambda);
+        fprintf('\tchebyshev   :%f\n',results_all(index,1));
+        fprintf('\tclark       :%f\n',results_all(index,2));
+        fprintf('\tcanberra    :%f\n',results_all(index,3));
+        fprintf('\tkldist      :%f\n',results_all(index,4));
+        fprintf('\tcosine      :%f\n',results_all(index,5));
+        fprintf('\tintersection:%f\n',results_all(index,6));
+        
+    end
+end
+
+
+
+
+
+
+================================================
+FILE: fminlbfgsGLLE.m
+================================================
+function [x,fval,exitFlag,output,grad]=fminlbfgsGLLE(funfcn,xInit,optim)
+%FMINLBFGS	Finds a local minimum of a function of several variables. 
+%
+%	Description
+%   [X,FVAL,EXITFLAG,OUTPUT,GRAD]=FMINLBFGS(FUNFCN,XINIT,OPTIM) finds a local minimum of a function of several variables.
+%	This optimizer is developed for image registration methods with large 
+%	amounts of unknown variables.
+%
+%   Statement
+%   This function is used for our BFGSLLD algorithm. In order to respect
+%   the author, we only change some notes, input and output variables
+%   in this function.
+%   
+%   Optimization methods supported:
+%	- Quasi Newton (BFGS)  
+%   - Limited memory BFGS (L-BFGS)
+%   - Steepest Gradient Descent optimization.
+%
+%   Inputs,
+%		FUNFCN: Function handle or string which is minimized, returning an
+%           error value and optional the error gradient. 
+%		XINIT: Initial values of unknowns can be a scalar, vector or matrix
+%           (optional)
+%		OPTIM: Structure with optimizer options, made by a struct or
+%           optimset. (optimset doesnot support all input options)
+%
+%   Outputs,
+%		X : The found location (values) which minimize the function.
+%		FVAL : The minimum found
+%		EXITFLAG : Gives value, which explain why the minimizer stopt
+%		OUTPUT : Structure with all important ouput values and parameters
+%		GRAD : The gradient at this location 
+%
+%   Extended description of input/ouput variables 
+%   OPTIONS,
+%		OPTIONS.GoalsExactAchieve : If set to 0, a line search method is
+%               used which uses a few function calls to do a good line
+%               search. When set to 1 a normal line search method with Wolfe 
+%				conditions is used (default).
+%		OPTIONS.GradConstr, Set this variable to true if gradient calls are
+%				cpu-expensive (default). If false more gradient calls are 
+%				used and less function calls.
+%	    OPTIONS.HessUpdate : If set to 'bfgs'
+%				optimization is used (default), when the number of unknowns is 
+%				larger then 3000 the function will switch to Limited memory BFGS, 
+%				or if you set it to 'lbfgs'. When set to 'steepdesc', steepest 
+%				decent optimization is used.
+%		OPTIONS.StoreN : Number of itterations used to approximate the Hessian,
+%			 	in L-BFGS, 20 is default. A lower value may work better with
+%				non smooth functions, because than the Hessian is only valid for
+%				a specific position. A higher value is recommend with quadratic equations. 
+%		OPTIONS.GradObj : Set to 'on' if gradient available otherwise finited difference
+%				is used.
+%     	OPTIONS.Display : Level of display. 'off' displays no output; 'plot' displays
+%				all linesearch results in figures. 'iter' displays output at  each 
+%               iteration; 'final' displays just the final output; 'notify' 
+%				displays output only if the function does not converge; 
+%	    OPTIONS.TolX : Termination tolerance on x, default 1e-6.
+%	    OPTIONS.TolFun : Termination tolerance on the function value, default 1e-6.
+%		OPTIONS.MaxIter : Maximum number of iterations allowed, default 400.
+% 		OPTIONS.MaxFunEvals : Maximum number of function evaluations allowed, 
+%				default 100 times the amount of unknowns.
+%		OPTIONS.DiffMaxChange : Maximum stepsize used for finite difference gradients.
+%		OPTIONS.DiffMinChange : Minimum stepsize used for finite difference gradients.
+%		OPTIONS.OutputFcn : User-defined function that an optimization function calls
+%				at each iteration.
+%		OPTIONS.rho : Wolfe condition on gradient (c1 on wikipedia), default 0.01.
+%		OPTIONS.sigma : Wolfe condition on gradient (c2 on wikipedia), default 0.9. 
+%		OPTIONS.tau1 : Bracket expansion if stepsize becomes larger, default 3.
+%		OPTIONS.tau2 : Left bracket reduction used in section phase,
+%		default 0.1.
+%		OPTIONS.tau3 : Right bracket reduction used in section phase, default 0.5.
+%   FUNFCN,
+%		The speed of this optimizer can be improved by also providing
+%   	the gradient at X. Write the FUN function as follows
+%   	function [f,g]=FUN(X)
+%       	f , value calculation at X;
+%   	if ( nargout > 1 )
+%       	g , gradient calculation at X;
+%   	end
+%	EXITFLAG,
+%		Possible values of exitFlag, and the corresponding exit conditions
+%		are
+%  		1, 'Change in the objective function value was less than the specified tolerance TolFun.';
+%  		2, 'Change in x was smaller than the specified tolerance TolX.'; 
+%  		3, 'Magnitude of gradient smaller than the specified tolerance';
+%  		4, 'Boundary fminimum reached.';
+%  		0, 'Number of iterations exceeded options.MaxIter or number of function evaluations exceeded options.FunEvals.';
+%  		-1, 'Algorithm was terminated by the output function.';
+%  		-2, 'Line search cannot find an acceptable point along the current search';
+%
+%   Examples
+%       options = optimset('GradObj','on');
+%       X = fminlbfgs(@myfun,2,options)
+%
+%   	% where myfun is a MATLAB function such as:
+%       function [f,g] = myfun(x)
+%       f = sin(x) + 3;
+%	    if ( nargout > 1 ), g = cos(x); end
+%
+%   See also 
+%   OPTIMSET, FMINSEARCH, FMINBND, FMINCON, FMINUNC, @, INLINE.
+%
+%   Copyright: D.Kroon University of Twente (Updated Nov. 2010)
+%       Function is written by D.Kroon University of Twente (Updated Nov. 2010)
+
+
+% Read Optimalisation Parameters
+defaultopt = struct('Display','iter','HessUpdate','bfgs','GoalsExactAchieve',1,'GradConstr',true,  ...
+			'TolX',1e-6,'TolFun',1e-6,'GradObj','on','MaxIter',300,'MaxFunEvals',100*numel(xInit)-1,  ...
+			'DiffMaxChange',1e-1,'DiffMinChange',1e-8,'OutputFcn',[], ...
+			'rho',0.0100,'sigma',0.900,'tau1',3,'tau2', 0.1, 'tau3', 0.5,'StoreN',20);
+if (~exist('optim','var')) 
+    optim=defaultopt;
+else
+    f = fieldnames(defaultopt);
+    for i=1:length(f),
+        if (~isfield(optim,f{i})||(isempty(optim.(f{i})))), optim.(f{i})=defaultopt.(f{i}); end
+    end
+end
+    
+% Initialize the data structure
+data.fval=0;
+data.gradient=0;
+data.fOld=[]; 
+data.xsizes=size(xInit);
+data.numberOfVariables = numel(xInit);
+data.xInitial = xInit(:);
+data.alpha=1;
+data.xOld=data.xInitial; 
+data.iteration=0;
+data.funcCount=0;
+data.gradCount=0;
+data.exitFlag=[];
+data.nStored=0;
+data.timeTotal=tic;
+data.timeExtern=0;
+% Switch to L-BFGS in case of more than 3000 unknown variables
+if(optim.HessUpdate(1)=='b') 
+    if(data.numberOfVariables<3000), 
+        optim.HessUpdate='bfgs';
+    else
+        optim.HessUpdate='lbfgs';
+    end
+end
+
+if(optim.HessUpdate(1)=='l')
+    succes=false;
+    while(~succes)
+        try
+            data.deltaX=zeros(data.numberOfVariables,optim.StoreN);
+            data.deltaG=zeros(data.numberOfVariables,optim.StoreN);
+            data.saveD=zeros(data.numberOfVariables,optim.StoreN);
+            succes=true;
+        catch ME
+            warning('fminlbfgs:memory','Decreasing StoreN value because out of memory');
+            succes=false;
+            data.deltaX=[]; data.deltaG=[]; data.saveD=[];
+            optim.StoreN=optim.StoreN-1;
+            if(optim.StoreN<1)
+                rethrow(ME);
+            end
+        end
+    end
+end
+
+exitFlag=[];
+
+% Display column headers
+if(strcmp(optim.Display,'iter'))
+    disp('     Iteration  Func-count   Grad-count         f(x)         Step-size');
+end
+
+% Calculate the initial error and gradient
+data.initialStepLength=1;
+[data,fval,grad]=gradient_function(data.xInitial,funfcn, data, optim);
+data.gradient=grad;
+data.dir = -data.gradient;
+data.fInitial = fval;
+data.fPrimeInitial= data.gradient'*data.dir(:);
+data.fOld=data.fInitial;
+data.xOld=data.xInitial;
+data.gOld=data.gradient;
+    
+
+gNorm = norm(data.gradient,Inf);  % Norm of gradient
+data.initialStepLength = min(1/gNorm,5); 
+
+% Show the current iteration
+if(strcmp(optim.Display,'iter'))
+        s=sprintf('     %5.0f       %5.0f       %5.0f       %13.6g    ',data.iteration,data.funcCount,data.gradCount,data.fInitial); disp(s);
+end
+  
+% Hessian intialization
+if(optim.HessUpdate(1)=='b')
+	data.Hessian=eye(data.numberOfVariables);
+end
+
+% Call output function
+if(call_output_function(data,optim,'init')), exitFlag=-1; end
+    
+% Start Minimizing
+while(true)
+    % Update number of itterations
+    data.iteration=data.iteration+1; 
+
+    % Set current lineSearch parameters
+    data.TolFunLnS = eps(max(1,abs(data.fInitial )));
+    data.fminimum = data.fInitial - 1e16*(1+abs(data.fInitial));
+    
+	% Make arrays to store linesearch results
+    data.storefx=[]; data.storepx=[]; data.storex=[]; data.storegx=[];
+
+    % If option display plot, than start new figure
+    if(optim.Display(1)=='p'), figure, hold on; end
+		
+    % Find a good step size in the direction of the gradient: Linesearch
+    if(optim.GoalsExactAchieve==1)
+		data=linesearch(funfcn, data,optim);
+    else
+        data=linesearch_simple(funfcn, data, optim);
+    end
+	
+	% Make linesearch plot
+	if(optim.Display(1)=='p'); 
+		plot(data.storex,data.storefx,'r*');
+		plot(data.storex,data.storefx,'b');
+		
+		alpha_test= linspace(min(data.storex(:))/3, max(data.storex(:))*1.3, 10);
+		falpha_test=zeros(1,length(alpha_test));
+        for i=1:length(alpha_test)
+			[data,falpha_test(i)]=gradient_function(data.xInitial(:)+alpha_test(i)*data.dir(:),funfcn, data, optim);
+        end    
+		plot(alpha_test,falpha_test,'g');
+        plot(data.alpha,data.f_alpha,'go','MarkerSize',8);
+	end
+	
+    % Check if exitFlag is set
+    if(~isempty(data.exitFlag)),
+        exitFlag=data.exitFlag;
+        data.xInitial=data.xOld; 
+        data.fInitial=data.fOld;
+        data.gradient=data.gOld;
+        break, 
+    end;
+    
+    % Update x with the alpha step
+    data.xInitial = data.xInitial + data.alpha*data.dir;
+    
+    % Set the current error and gradient
+    data.fInitial =  data.f_alpha;
+	data.gradient = data.grad;
+    
+    % Set initial steplength to 1
+    data.initialStepLength = 1;
+    
+    
+    gNorm = norm(data.gradient,Inf);  % Norm of gradient
+    
+    % Set exit flags 
+    if(gNorm <optim.TolFun), exitFlag=1; end
+    if(max(abs(data.xOld-data.xInitial)) <optim.TolX), exitFlag=2; end
+    if(data.iteration>=optim.MaxIter), exitFlag=0; end
+    
+    % Check if exitFlag is set
+    if(~isempty(exitFlag)), break, end;
+
+    % Update the inverse Hessian matrix
+    if(optim.HessUpdate(1)~='s')
+        % Do the Quasi-Neton Hessian update.
+        data = updateQuasiNewtonMatrix_LBFGS(data,optim);
+    else
+        data.dir = -data.gradient;
+    end
+  
+    % Derivative of direction
+    data.fPrimeInitial= data.gradient'*data.dir(:);
+
+    % Call output function
+    if(call_output_function(data,optim,'iter')), exitFlag=-1; end
+    
+    % Show the current iteration
+    if(strcmp(optim.Display(1),'i')||strcmp(optim.Display(1),'p'))
+        s=sprintf('     %5.0f       %5.0f       %5.0f       %13.6g   %13.6g',data.iteration,data.funcCount,data.gradCount,data.fInitial,data.alpha); disp(s);
+    end
+    
+    % Keep the variables for next iteration
+    data.fOld=data.fInitial;
+    data.xOld=data.xInitial;
+    data.gOld=data.gradient;
+end
+% Set output parameters
+fval=data.fInitial;
+grad=data.gradient;
+x = data.xInitial;
+
+% Reshape x to original shape
+x=reshape(x,data.xsizes);
+
+% Call output function
+if(call_output_function(data,optim,'done')), exitFlag=-1; end
+
+% Make exist output structure
+if(optim.HessUpdate(1)=='b'), output.algorithm='BFGS';
+elseif(optim.HessUpdate(1)=='l'), output.algorithm='limited memory BFGS (L-BFGS)';
+else output.algorithm='Steepest Gradient Descent'; 
+end
+output.message=getexitmessage(exitFlag);
+output.iteration = data.iteration;
+output.funccount = data.funcCount;
+output.fval = data.fInitial;
+output.stepsize = data.alpha;
+output.directionalderivative = data.fPrimeInitial;
+output.gradient = reshape(data.gradient, data.xsizes);
+output.searchdirection = data.dir;
+output.timeTotal=toc(data.timeTotal);    
+output.timeExtern=data.timeExtern;
+oupput.timeIntern=output.timeTotal-output.timeExtern;
+% Display final results
+if(~strcmp(optim.Display,'off'))
+    disp('    Optimizer Results')
+    disp(['        Algorithm Used: ' output.algorithm]);
+    disp(['        Exit message : ' output.message]);
+    disp(['        iterations : '  int2str(data.iteration)]);
+    disp(['        Function Count : ' int2str(data.funcCount)]);
+    disp(['        Minimum found : ' num2str(fval)]);
+    disp(['        Intern Time : ' num2str(oupput.timeIntern) ' seconds']);
+    disp(['        Total Time : ' num2str(output.timeTotal) ' seconds']);
+end
+
+function message=getexitmessage(exitFlag)
+    switch(exitFlag)
+        case 1, message='Change in the objective function value was less than the specified tolerance TolFun.';
+        case 2, message='Change in x was smaller than the specified tolerance TolX.'; 
+        case 3, message='Magnitude of gradient smaller than the specified tolerance';
+        case 4, message='Boundary fminimum reached.';
+        case 0, message='Number of iterations exceeded options.MaxIter or number of function evaluations exceeded options.FunEvals.';
+        case -1, message='Algorithm was terminated by the output function.';
+        case -2, message='Line search cannot find an acceptable point along the current search';
+        otherwise, message='Undefined exit code';
+    end
+
+    
+function stopt=call_output_function(data,optim,where)
+stopt=false;
+if(~isempty(optim.OutputFcn))
+    output.iteration = data.iteration;
+    output.funccount = data.funcCount;
+    output.fval = data.fInitial;
+    output.stepsize = data.alpha;
+    output.directionalderivative = data.fPrimeInitial;
+    output.gradient = reshape(data.gradient, data.xsizes);
+    output.searchdirection = data.dir;
+    stopt=feval(optim.OutputFcn,reshape(data.xInitial,data.xsizes),output,where); 
+end
+        
+	
+function data=linesearch_simple(funfcn, data, optim)
+% Find a bracket of acceptable points
+data = bracketingPhase_simple(funfcn, data, optim);
+
+if (data.bracket_exitFlag  == 2)
+  % BracketingPhase found a bracket containing acceptable points; 
+  % now find acceptable point within bracket
+  data = sectioningPhase_simple(funfcn, data, optim);
+  data.exitFlag = data.section_exitFlag; 
+else
+  % Already acceptable point found or MaxFunEvals reached
+  data.exitFlag = data.bracket_exitFlag; 
+end
+
+function data = bracketingPhase_simple(funfcn, data,optim)
+% Number of itterations
+itw=0; 
+
+% Point with smaller value, initial
+data.beta=0; 
+data.f_beta=data.fInitial; 
+data.fPrime_beta=data.fPrimeInitial;
+
+% Initial step is equal to alpha of previous step.
+alpha = data.initialStepLength;
+
+% Going up hill
+hill=false;
+
+% Search for brackets
+while(true)
+    % Calculate the error registration gradient
+    if(optim.GradConstr)
+        [data,f_alpha]=gradient_function(data.xInitial(:)+alpha*data.dir(:),funfcn, data, optim);
+        fPrime_alpha=nan;
+        grad=nan;
+    else
+        [data,f_alpha, grad]=gradient_function(data.xInitial(:)+alpha*data.dir(:),funfcn, data,optim);
+        fPrime_alpha = grad'*data.dir(:);
+    end
+    
+	% Store values linesearch
+	data.storefx=[data.storefx f_alpha]; 
+    data.storepx=[data.storepx fPrime_alpha]; 
+	data.storex=[data.storex alpha]; 
+	data.storegx=[data.storegx grad(:)];
+    
+    % Update step value
+    if(data.f_beta<f_alpha), 
+        % Go to smaller stepsize
+        alpha=alpha*optim.tau3;
+        
+        % Set hill variable
+        hill=true;
+    else
+        % Save current minium point
+        data.beta=alpha; data.f_beta=f_alpha; data.fPrime_beta=fPrime_alpha; data.grad=grad;
+        if(~hill)
+            alpha=alpha*optim.tau1;  
+        end
+    end
+                        
+    % Update number of loop iterations
+    itw=itw+1; 
+		
+    if(itw>(log(optim.TolFun)/log(optim.tau3))),
+      % No new optium found, linesearch failed.
+      data.bracket_exitFlag=-2; break; 
+    end
+    
+    if(data.beta>0&&hill)
+            % Get the brackets around minimum point
+            % Pick bracket A from stored trials
+            [t,i]=sort(data.storex,'ascend');
+            storefx=data.storefx(i);storepx=data.storepx(i); storex=data.storex(i);
+            [t,i]=find(storex>data.beta,1);
+            if(isempty(i)), [t,i]=find(storex==data.beta,1); end
+            alpha=storex(i); f_alpha=storefx(i); fPrime_alpha=storepx(i);
+            
+            % Pick bracket B from stored trials
+            [t,i]=sort(data.storex,'descend');
+            storefx=data.storefx(i);storepx=data.storepx(i); storex=data.storex(i);
+            [t,i]=find(storex<data.beta,1);
+            if(isempty(i)), [t,i]=find(storex==data.beta,1); end
+            beta=storex(i); f_beta=storefx(i); fPrime_beta=storepx(i);
+            
+            % Calculate derivatives if not already calculated
+            if(optim.GradConstr)
+                gstep=data.initialStepLength/1e6; 
+                if(gstep>optim.DiffMaxChange), gstep=optim.DiffMaxChange; end
+                if(gstep<optim.DiffMinChange), gstep=optim.DiffMinChange; end
+                [data,f_alpha2]=gradient_function(data.xInitial(:)+(alpha+gstep)*data.dir(:),funfcn, data, optim);
+                [data,f_beta2]=gradient_function(data.xInitial(:)+(beta+gstep)*data.dir(:),funfcn, data, optim);
+                fPrime_alpha=(f_alpha2-f_alpha)/gstep;
+                fPrime_beta=(f_beta2-f_beta)/gstep;
+            end
+
+            % Set the brackets A and B
+            data.a=alpha; data.f_a=f_alpha; data.fPrime_a=fPrime_alpha;
+            data.b=beta; data.f_b=f_beta; data.fPrime_b=fPrime_beta;
+  
+            % Finished bracketing phase
+            data.bracket_exitFlag  = 2; return
+    end
+
+	% Reached max function evaluations
+	if(data.funcCount>=optim.MaxFunEvals), data.bracket_exitFlag=0; return; end
+end
+    
+
+function data = sectioningPhase_simple(funfcn, data, optim)
+% Get the brackets
+brcktEndpntA=data.a; brcktEndpntB=data.b;
+
+% Calculate minimum between brackets
+[alpha,f_alpha_estimated] = pickAlphaWithinInterval(brcktEndpntA,brcktEndpntB,data.a,data.b,data.f_a,data.fPrime_a,data.f_b,data.fPrime_b,optim);  
+if(isfield(data,'beta')&&(data.f_beta<f_alpha_estimated)), alpha=data.beta; end
+
+
+[t,i]=find(data.storex==alpha,1);
+if((~isempty(i))&&(~isnan(data.storegx(i))))
+    f_alpha=data.storefx(i); grad=data.storegx(:,i);
+else
+    % Calculate the error and gradient for the next minimizer itteration
+    [data,f_alpha, grad]=gradient_function(data.xInitial(:)+alpha*data.dir(:),funfcn, data,optim);
+    if(isfield(data,'beta')&&(data.f_beta<f_alpha)), 
+        alpha=data.beta; 
+        if((~isempty(i))&&(~isnan(data.storegx(i))))
+            f_alpha=data.storefx(i); grad=data.storegx(:,i);
+        else
+            [data,f_alpha, grad]=gradient_function(data.xInitial(:)+alpha*data.dir(:),funfcn, data,optim);
+        end
+    end
+end
+
+% Store values linesearch
+data.storefx=[data.storefx f_alpha]; data.storex=[data.storex alpha];
+
+fPrime_alpha = grad'*data.dir(:);
+data.alpha=alpha; 
+data.fPrime_alpha= fPrime_alpha; 
+data.f_alpha= f_alpha;
+data.grad=grad;
+
+% Set the exit flag to succes   
+data.section_exitFlag=[];
+
+
+function data=linesearch(funfcn, data, optim)
+
+% Find a bracket of acceptable points
+data = bracketingPhase(funfcn, data,optim);
+
+if (data.bracket_exitFlag  == 2)
+  % BracketingPhase found a bracket containing acceptable points; 
+  % now find acceptable point within bracket
+  data = sectioningPhase(funfcn, data, optim);
+  data.exitFlag = data.section_exitFlag; 
+else
+  % Already acceptable point found or MaxFunEvals reached
+  data.exitFlag = data.bracket_exitFlag; 
+end
+
+function data = sectioningPhase(funfcn, data, optim)
+%
+% sectioningPhase finds an acceptable point alpha within a given bracket [a,b] 
+% containing acceptable points. Notice that funcCount counts the total number of 
+% function evaluations including those of the bracketing phase. 
+
+while(true)
+    
+    % Pick alpha in reduced bracket
+    brcktEndpntA = data.a + min(optim.tau2,optim.sigma)*(data.b - data.a); 
+    brcktEndpntB = data.b - optim.tau3*(data.b - data.a);
+    
+    % Find global minimizer in bracket [brcktEndpntA,brcktEndpntB] of 3rd-degree 
+    % polynomial that interpolates f() and f'() at "a" and at "b".
+    alpha = pickAlphaWithinInterval(brcktEndpntA,brcktEndpntB,data.a,data.b,data.f_a,data.fPrime_a,data.f_b,data.fPrime_b,optim);  
+
+    % No acceptable point could be found
+    if (abs( (alpha - data.a)*data.fPrime_a ) <= data.TolFunLnS), data.section_exitFlag = -2; return; end
+    
+    % Calculate value (and gradient if no extra time cost) of current alpha
+    if(~optim.GradConstr)
+        [data,f_alpha, grad]=gradient_function(data.xInitial(:)+alpha*data.dir(:),funfcn, data, optim);
+        fPrime_alpha = grad'*data.dir(:);
+    else
+        gstep=data.initialStepLength/1e6; 
+        if(gstep>optim.DiffMaxChange), gstep=optim.DiffMaxChange; end
+        if(gstep<optim.DiffMinChange), gstep=optim.DiffMinChange; end
+        [data,f_alpha]=gradient_function(data.xInitial(:)+alpha*data.dir(:),funfcn, data,optim);
+        [data,f_alpha2]=gradient_function(data.xInitial(:)+(alpha+gstep)*data.dir(:),funfcn, data, optim);
+        fPrime_alpha=(f_alpha2-f_alpha)/gstep;
+    end
+
+	% Store values linesearch 
+	data.storefx=[data.storefx f_alpha]; data.storex=[data.storex alpha]; 
+	
+    % Store current bracket position of A
+    aPrev = data.a; 
+    f_aPrev = data.f_a; 
+    fPrime_aPrev = data.fPrime_a; 
+
+    % Update the current brackets
+    if ((f_alpha > data.fInitial + alpha*optim.rho*data.fPrimeInitial) || (f_alpha >= data.f_a))
+        % Update bracket B to current alpha
+        data.b = alpha; data.f_b = f_alpha; data.fPrime_b = fPrime_alpha;
+    else
+        % Wolfe conditions, if true then acceptable point found 
+        if (abs(fPrime_alpha) <= -optim.sigma*data.fPrimeInitial), 
+            if(optim.GradConstr)
+                % Gradient was not yet calculated because of time costs
+                [data,f_alpha, grad]=gradient_function(data.xInitial(:)+alpha*data.dir(:),funfcn, data, optim);
+                fPrime_alpha = grad'*data.dir(:);
+            end
+            % Store the found alpha values
+            data.alpha=alpha; data.fPrime_alpha= fPrime_alpha; data.f_alpha= f_alpha;
+            data.grad=grad;
+            data.section_exitFlag = []; return, 
+        end
+        
+        % Update bracket A
+        data.a = alpha; data.f_a = f_alpha;  data.fPrime_a = fPrime_alpha;
+        
+        if (data.b - data.a)*fPrime_alpha >= 0
+            % B becomes old bracket A;
+            data.b = aPrev; data.f_b = f_aPrev;  data.fPrime_b = fPrime_aPrev;
+        end
+    end
+    
+    % No acceptable point could be found
+    if (abs(data.b-data.a) < eps), data.section_exitFlag = -2; return, end
+
+    % maxFunEvals reached
+    if(data.funcCount >optim.MaxFunEvals), data.section_exitFlag = -1; return, end
+end
+
+function data = bracketingPhase(funfcn, data, optim)
+% bracketingPhase finds a bracket [a,b] that contains acceptable points; a bracket 
+% is the same as a closed interval, except that a > b is allowed.
+%
+% The outputs f_a and fPrime_a are the values of the function and the derivative 
+% evaluated at the bracket endpoint 'a'. Similar notation applies to the endpoint 
+% 'b'. 
+
+% Parameters of bracket A
+data.a = []; 
+data.f_a = []; 
+data.fPrime_a = []; 
+
+% Parameters of bracket B
+data.b = []; 
+data.f_b = []; 
+data.fPrime_b = [];
+
+% First trial alpha is user-supplied
+% f_alpha will contain f(alpha) for all trial points alpha
+% fPrime_alpha will contain f'(alpha) for all trial points alpha
+alpha = data.initialStepLength;
+f_alpha = data.fInitial;              
+fPrime_alpha = data.fPrimeInitial;    
+
+% Set maximum value of alpha (determined by fminimum)
+alphaMax = (data.fminimum - data.fInitial)/(optim.rho*data.fPrimeInitial); 
+alphaPrev = 0;
+
+while(true) 
+  % Evaluate f(alpha) and f'(alpha)
+  fPrev = f_alpha;
+  fPrimePrev = fPrime_alpha;
+  
+  % Calculate value (and gradient if no extra time cost) of current alpha
+  if(~optim.GradConstr)
+      [data,f_alpha, grad]=gradient_function(data.xInitial(:)+alpha*data.dir(:),funfcn, data, optim);
+      fPrime_alpha = grad'*data.dir(:);
+  else
+      gstep=data.initialStepLength/1e6;
+      if(gstep>optim.DiffMaxChange), gstep=optim.DiffMaxChange; end
+      if(gstep<optim.DiffMinChange), gstep=optim.DiffMinChange; end
+      [data,f_alpha]=gradient_function(data.xInitial(:)+alpha*data.dir(:),funfcn, data, optim);
+      [data,f_alpha2]=gradient_function(data.xInitial(:)+(alpha+gstep)*data.dir(:),funfcn, data, optim);
+      fPrime_alpha=(f_alpha2-f_alpha)/gstep;
+  end
+  
+  % Store values linesearch 
+  data.storefx=[data.storefx f_alpha]; data.storex=[data.storex alpha]; 
+	
+  % Terminate if f < fminimum
+  if (f_alpha <= data.fminimum), data.bracket_exitFlag = 4; return; end
+  
+  % Bracket located - case 1 (Wolfe conditions)
+  if (f_alpha > (data.fInitial + alpha*optim.rho*data.fPrimeInitial)) || (f_alpha >= fPrev)
+    % Set the bracket values
+    data.a = alphaPrev; data.f_a = fPrev;  data.fPrime_a = fPrimePrev;
+    data.b = alpha; data.f_b = f_alpha;  data.fPrime_b = fPrime_alpha;
+    % Finished bracketing phase
+    data.bracket_exitFlag  = 2; return 
+  end
+
+  % Acceptable steplength found
+  if (abs(fPrime_alpha) <= -optim.sigma*data.fPrimeInitial), 
+      if(optim.GradConstr)
+          % Gradient was not yet calculated because of time costs
+          [data,f_alpha, grad]=gradient_function(data.xInitial(:)+alpha*data.dir(:),funfcn, data, optim);
+          fPrime_alpha = grad'*data.dir(:);
+      end
+      % Store the found alpha values
+      data.alpha=alpha;
+      data.fPrime_alpha= fPrime_alpha; data.f_alpha= f_alpha; data.grad=grad;
+      % Finished bracketing phase, and no need to call sectioning phase
+      data.bracket_exitFlag = [];  return 
+  end
+  
+  % Bracket located - case 2  
+  if (fPrime_alpha >= 0)
+    % Set the bracket values
+    data.a = alpha; data.f_a = f_alpha;  data.fPrime_a = fPrime_alpha;
+    data.b = alphaPrev; data.f_b = fPrev; data.fPrime_b = fPrimePrev;
+    % Finished bracketing phase
+    data.bracket_exitFlag  = 2; return
+  end
+ 
+  % Update alpha
+  if (2*alpha - alphaPrev < alphaMax )
+      brcktEndpntA = 2*alpha-alphaPrev; 
+      brcktEndpntB = min(alphaMax,alpha+optim.tau1*(alpha-alphaPrev));
+      % Find global minimizer in bracket [brcktEndpntA,brcktEndpntB] of 3rd-degree polynomial 
+      % that interpolates f() and f'() at alphaPrev and at alpha
+      alphaNew = pickAlphaWithinInterval(brcktEndpntA,brcktEndpntB,alphaPrev,alpha,fPrev, ...
+                                         fPrimePrev,f_alpha,fPrime_alpha,optim);
+      alphaPrev = alpha;
+      alpha = alphaNew;
+  else
+      alpha = alphaMax;
+  end
+
+  % maxFunEvals reached
+  if(data.funcCount >optim.MaxFunEvals), data.bracket_exitFlag = -1; return, end
+end
+
+function [alpha,f_alpha]= pickAlphaWithinInterval(brcktEndpntA,brcktEndpntB,alpha1,alpha2,f1,fPrime1,f2,fPrime2,optim)
+% finds a global minimizer alpha within the bracket [brcktEndpntA,brcktEndpntB] of the cubic polynomial 
+% that interpolates f() and f'() at alpha1 and alpha2. Here f(alpha1) = f1, f'(alpha1) = fPrime1, 
+% f(alpha2) = f2, f'(alpha2) = fPrime2.
+
+% determines the coefficients of the cubic polynomial with c(alpha1) = f1, 
+% c'(alpha1) = fPrime1, c(alpha2) = f2, c'(alpha2) = fPrime2.
+coeff = [(fPrime1+fPrime2)*(alpha2-alpha1)-2*(f2-f1) ...
+    3*(f2-f1)-(2*fPrime1+fPrime2)*(alpha2-alpha1) (alpha2-alpha1)*fPrime1 f1];
+
+% Convert bounds to the z-space
+lowerBound = (brcktEndpntA - alpha1)/(alpha2 - alpha1);
+upperBound = (brcktEndpntB - alpha1)/(alpha2 - alpha1);
+
+% Swap if lowerbound is higher than the upperbound
+if (lowerBound  > upperBound), t=upperBound; upperBound=lowerBound; lowerBound=t; end 
+
+% Find minima and maxima from the roots of the derivative of the polynomial.
+sPoints = roots([3*coeff(1) 2*coeff(2) coeff(3)]); 
+
+% Remove imaginaire and points outside range
+
+sPoints(imag(sPoints)~=0)=[]; 
+sPoints(sPoints<lowerBound)=[]; sPoints(sPoints>upperBound)=[];
+
+% Make vector with all possible solutions
+sPoints=[lowerBound sPoints(:)' upperBound];
+
+% Select the global minimum point
+[f_alpha,index]=min(polyval(coeff,sPoints)); z=sPoints(index);
+
+% Add the offset and scale back from [0..1] to the alpha domain
+alpha = alpha1 + z*(alpha2 - alpha1);
+
+% Show polynomial search
+if(optim.Display(1)=='p'); 
+    vPoints=polyval(coeff,sPoints);
+    plot(sPoints*(alpha2 - alpha1)+alpha1,vPoints,'co');
+    plot([sPoints(1) sPoints(end)]*(alpha2 - alpha1)+alpha1,[vPoints(1) vPoints(end)],'c*');
+    xPoints=linspace(lowerBound/3, upperBound*1.3, 50);
+    vPoints=polyval(coeff,xPoints);
+    plot(xPoints*(alpha2 - alpha1)+alpha1,vPoints,'c');
+end
+	
+
+function [data,fval,grad]=gradient_function(x,funfcn, data, optim)
+    % Call the error function for error (and gradient)
+    if ( nargout <3 )
+        timem=tic;   
+        fval=funfcn(reshape(x,data.xsizes)); 
+        data.timeExtern=data.timeExtern+toc(timem);
+        data.funcCount=data.funcCount+1;
+    else
+        if(strcmp(optim.GradObj,'on'))
+            timem=tic;    
+            [fval, grad]=feval(funfcn,reshape(x,data.xsizes)); 
+            data.timeExtern=data.timeExtern+toc(timem);
+            data.funcCount=data.funcCount+1;
+            data.gradCount=data.gradCount+1;
+        else
+            % Calculate gradient with forward difference if not provided by the function
+            grad=zeros(length(x),1);
+            fval=funfcn(reshape(x,data.xsizes));
+            gstep=data.initialStepLength/1e6; 
+            if(gstep>optim.DiffMaxChange), gstep=optim.DiffMaxChange; end
+            if(gstep<optim.DiffMinChange), gstep=optim.DiffMinChange; end
+            for i=1:length(x),
+                x_temp=x; x_temp(i)=x_temp(i)+gstep;
+                timem=tic;    
+                [fval_g]=feval(funfcn,reshape(x_temp,data.xsizes)); data.funcCount=data.funcCount+1;
+                data.timeExtern=data.timeExtern+toc(timem);
+                grad(i)=(fval_g-fval)/gstep;
+            end
+        end
+        grad=grad(:);
+    end
+    
+function data = updateQuasiNewtonMatrix_LBFGS(data,optim)
+% updates the quasi-Newton matrix that approximates the inverse to the Hessian.
+% Two methods are support BFGS and L-BFGS, in L-BFGS the hessian is not
+% constructed or stored.
+% Calculate position, and gradient diference between the
+% itterations
+deltaX=data.alpha* data.dir;
+deltaG=data.gradient-data.gOld;
+        
+if ((deltaX'*deltaG) >= sqrt(eps)*max( eps,norm(deltaX)*norm(deltaG) ))
+
+    if(optim.HessUpdate(1)=='b')
+        % Default BFGS as described by Nocedal
+        p_k = 1 / (deltaG'*deltaX);
+        Vk = eye(data.numberOfVariables) - p_k*deltaG*deltaX';
+        % Set Hessian
+        data.Hessian = Vk'*data.Hessian *Vk + p_k * deltaX*deltaX';
+        % Set new Direction
+        data.dir = -data.Hessian*data.gradient;
+    else
+        % L-BFGS with scaling as described by Nocedal
+       
+        % Update a list with the history of deltaX and deltaG
+        data.deltaX(:,2:optim.StoreN)=data.deltaX(:,1:optim.StoreN-1); data.deltaX(:,1)=deltaX;
+        data.deltaG(:,2:optim.StoreN)=data.deltaG(:,1:optim.StoreN-1); data.deltaG(:,1)=deltaG;
+    
+        data.nStored=data.nStored+1; if(data.nStored>optim.StoreN), data.nStored=optim.StoreN; end
+
+        % Initialize variables
+        a=zeros(1,data.nStored);
+        p=zeros(1,data.nStored);
+
+        q = data.gradient;
+        for i=1:data.nStored
+            p(i)= 1 / (data.deltaG(:,i)'*data.deltaX(:,i));
+            a(i) = p(i)* data.deltaX(:,i)' * q;
+            q = q - a(i) * data.deltaG(:,i);
+        end
+        % Scaling of initial Hessian (identity matrix)
+        p_k = data.deltaG(:,1)'*data.deltaX(:,1) / sum(data.deltaG(:,1).^2); 
+        
+        % Make r = - Hessian * gradient
+        r = p_k * q;
+        for i=data.nStored:-1:1,
+            b = p(i) * data.deltaG(:,i)' * r;
+            r = r + data.deltaX(:,i)*(a(i)-b);
+        end
+        
+        % Set new direction
+        data.dir = -r;
+    end
+end
+
+
+
+
+
+    
+    
+
+
+================================================
+FILE: GLLE.m
+================================================
+function [W,numerical] = GLLE(logicalLabel,features,C_low_rank,lambda)
+[d,n] = size(features);
+[l,~] = size(logicalLabel);
+
+[kk,~] = size(C_low_rank);
+
+global   trainFeature;
+global   trainLabel;
+global   para;
+global   CC;
+
+%%%%%%%linear model,kernel method%%%%%%%%
+ker  = 'rbf'; %type of kernel function ('lin', 'poly', 'rbf', 'sam')
+par  = 1*mean(pdist(features)); %parameter of kernel function
+H = kernelmatrix(ker, par, features, features);% build the kernel matrix on the labeled samples (N x N)
+UnitMatrix = ones(size(features,1),1);
+trainFeature = [H,UnitMatrix];
+%%%%%%%linear model,kernel method%%%%%%%%
+
+CC = (eye(kk)-C_low_rank')*(eye(kk)-C_low_rank);
+trainLabel = logicalLabel;
+para = lambda;
+item=rand(size(trainFeature,2),size(trainLabel,2));
+%save dt.mat trainFeature trainLabel G lambda
+[W,fval] = fminlbfgsGLLE(@LEbfgsProcess,item);
+numerical = trainFeature*W;
+
+
+end
+
+
+
+================================================
+FILE: kernelmatrix.m
+================================================
+function K = kernelmatrix(ker, parameter, testX, trainX)
+% KERNELMATRIX calculate the kernel matrix of instance vectors in testX and trainX.
+%
+%	Description
+%   K = KERNELMATRIX(KER, X, trainX, PARAMETER) calculate the kernel 
+%   matrix of the instance vectors in testX and trainX.
+%   The function we writed is based on the original kernelmatrix function 
+%   writed by Gustavo Camps-Valls(2006(c)) and updated by Jordi(jordi@uv.es,2007-11).
+%
+%   Inputs,
+%       KER:          type of kernel function ('lin', 'poly', 'rbf', 'sam')
+%       PARAMETER:    parameters of kernel function
+%       TESTFEATURE:  data matrix with training samples in rows and features in columns (N1 x D)
+%       TRAINFEATURE: data matrix with test samples in rows and features in in columns (N2 x D)
+%
+%   Outputs,
+%       K:  kernel matrix, each element corresponds to the kernel of two feature vectors (N1 x N2)
+%
+%   Extended description of input/ouput variables
+%       PARAMETER:
+%           SIGMA:  width of the RBF and sam kernel
+%           BIAS:   bias in the linear and polinomial kernel
+%           DEGREE: degree in the polynomial kernel
+%
+% Copyright: Peng Hou (hpeng@seu.edu.cn), Xin Geng (xgeng@seu.edu.cn),
+%   Min-Ling Zhang (mlzhang@seu.edu.cn)
+%   School of Computer Science and Engineering, Southeast University
+%   Nanjing 211189, P.R.China
+%
+switch ker
+    case 'lin'
+        if exist('trainX','var')
+            K = testX * trainX' + parameter;
+        else
+            K = testX * testX' + parameter;
+        end
+
+    case 'poly'
+        if exist('trainX','var')
+            K = (testX * trainX' + 1).^parameter;
+        else
+            K = (testX * testX' + 1).^parameter;
+        end
+        
+    %To speed up the computation of the RBF kernel matrix, 
+    %we exploit a decomposition of the Euclidean distance (norm).
+    case 'rbf'  
+        n1sq = sum(testX'.^2,1); %compute x^2
+        n1 = size(testX',2);
+        if isempty(trainX);
+            %||x-y||^2 = x^2 + y^2 - 2*x'*y 
+            D = (ones(n1,1)*n1sq)' + ones(n1,1)*n1sq -2*testX*testX';
+        else
+            n2sq = sum(trainX'.^2,1);
+            n2 = size(trainX',2);
+            %||x-y||^2 = x^2 + y^2 - 2*x'*y 
+            D = (ones(n2,1)*n1sq)' + ones(n1,1)*n2sq -2*testX*trainX'; 
+        end;
+        K = exp(-D/(2*parameter^2));
+
+    case 'sam'
+        if exist('trainX','var');
+            D = testX*trainX';
+        else
+            D = testX*testX';
+        end
+        K = exp(-acos(D).^2/(2*parameter^2));
+
+    otherwise
+        error(['Unsupported kernel ' ker])
+end
+
+
+
+================================================
+FILE: L2_distance.m
+================================================
+function d = L2_distance(a, b)
+% L2_DISTANCE - computes Euclidean distance matrix
+%
+% E = L2_distance(A,B)
+%
+%    A - (DxM) matrix 
+%    B - (DxN) matrix
+% 
+% Returns:
+%    E - (MxN) Euclidean distances between vectors in A and B
+%
+%
+% Description : 
+%    This fully vectorized (VERY FAST!) m-file computes the 
+%    Euclidean distance between two vectors by:
+%
+%                 ||A-B|| = sqrt ( ||A||^2 + ||B||^2 - 2*A.B )
+%
+% Example : 
+%    A = rand(400,100); B = rand(400,200);
+%    d = distance(A,B);
+
+% Author   : Roland Bunschoten
+%            University of Amsterdam
+%            Intelligent Autonomous Systems (IAS) group
+%            Kruislaan 403  1098 SJ Amsterdam
+%            tel.(+31)20-5257524
+%            bunschot@wins.uva.nl
+% Last Rev : Wed Oct 20 08:58:08 MET DST 1999
+% Tested   : PC Matlab v5.2 and Solaris Matlab v5.3
+
+% Copyright notice: You are free to modify, extend and distribute 
+%    this code granted that the author of the original code is 
+%    mentioned as the original author of the code.
+
+% Fixed by JBT (3/18/00) to work for 1-dimensional vectors
+% and to warn for imaginary numbers.  Also ensures that 
+% output is all real, and allows the option of forcing diagonals to
+% be zero.  
+%
+%
+
+% This file is part of the Matlab Toolbox for Dimensionality Reduction.
+% The toolbox can be obtained from http://homepage.tudelft.nl/19j49
+% You are free to use, change, or redistribute this code in any way you
+% want for non-commercial purposes. However, it is appreciated if you 
+% maintain the name of the original author.
+%
+% (C) Laurens van der Maaten, Delft University of Technology
+
+
+    if nargin < 2
+       error('Not enough input arguments');
+    end
+    if size(a, 1) ~= size(b, 1)
+        error('A and B should be of same dimensionality');
+    end
+    if ~isreal(a) || ~isreal(b)
+        warning('Computing distance table using imaginary inputs. Results may be off.'); 
+    end
+
+    % Padd zeros if necessray
+    if size(a, 1) == 1
+        a = [a; zeros(1, size(a, 2))]; 
+        b = [b; zeros(1, size(b, 2))]; 
+    end
+
+    % Compute distance table
+    d = sqrt(bsxfun(@plus, sum(a .* a)', bsxfun(@minus, sum(b .* b), 2 * a' * b)));
+
+    % Make sure result is real
+    d = real(d);
+
+
+
+
+================================================
+FILE: LEbfgsProcess.m
+================================================
+function [target,gradient] = LEbfgsProcess(weights)
+%BFGSPROCESS	Provide the target function and the gradient.
+%
+%	Description
+%   [TARGET,GRADIENT] = LEbfgsProcess(WEIGHTS) provides the target function and the gradient.
+%   They will be used in the optimization of leBFGS-- LEBFGSTRAIN.
+%   
+%   Inputs,
+%       WEIGHTS: the weights which will be optimized in LEBFGSTRAIN
+%   Outputs,
+%       TARGET:  the target function which will be used in LEBFGSTRAIN
+%       GRADIENT: the gradient which will be used in LEBFGSTRAIN
+% 
+%	See also
+%	LEBFGSTRAIN,LEPREDICT, FMINLBFGS 
+%	
+%   Copyright: Ning Xu (xning@seu.edu.cn)
+%   School of Computer Science and Engineering, Southeast University
+%   Nanjing 211189, P.R.China
+%
+
+% Load the data set.
+global   trainFeature;
+global   trainLabel;
+global   para;
+global   CC;
+%load dt.mat;
+[size_sam,size_X]=size(trainFeature);
+
+modProb =  trainFeature * weights;  % size_sam * size_Y
+
+% %Target function.
+% target = sum(sum((trainLabel - modProb).^2));
+% 
+% % The gradient.
+% gradient = trainFeature'*(modProb - trainLabel);
+
+
+
+L = sum(sum((modProb - trainLabel).^2)); 
+R =  trace(modProb'*CC*modProb);
+gradL = 2*trainFeature' * (modProb - trainLabel);
+gradR =  trainFeature'*CC*trainFeature*weights + ( trainFeature'*CC*trainFeature)'*weights;;
+
+
+
+target =( L + para * R );
+gradient = (gradL +  para * gradR);
+
+
+
+
+end
+
+
+
+
+
+================================================
+FILE: LICENSE
+================================================
+MIT License
+
+Copyright (c) 2021 tanghaoyu258
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE.
+
+
+
+================================================
+FILE: lrra.m
+================================================
+function [Z,E] = lrra(X,A,lambda,display)
+% This routine solves the following nuclear-norm optimization problem,
+% which is more general than "lrr.m"
+% min |Z|_*+lambda*|E|_2,1
+% s.t., X = AZ+E
+% inputs:
+%        X -- D*N data matrix, D is the data dimension, and N is the number
+%             of data vectors.
+%        A -- D*M matrix of a dictionary, M is the size of the dictionary
+tol = 1e-8;
+maxIter = 1e6;
+[d n] = size(X);
+m = size(A,2);
+rho = 1.1;
+max_mu = 1e10;
+mu = 1e-6;
+if nargin<4
+    display = true;
+end
+if nargin<3
+    norm_x = norm(X,2);
+    lambda = 1/(sqrt(n)*norm_x);
+end
+atx = A'*X;
+inv_a = inv(A'*A+eye(m));
+%% Initializing optimization variables
+% intialize
+J = zeros(m,n);
+Z = zeros(m,n);
+E = sparse(d,n);
+
+Y1 = zeros(d,n);
+Y2 = zeros(m,n);
+%% Start main loop
+iter = 0;
+% if display
+%     disp(['initial,rank=' num2str(rank(Z))]);
+% end
+while iter<maxIter
+    iter = iter + 1;
+    %update J
+    temp = Z + Y2/mu;
+    [U,sigma,V] = svd(temp,'econ');
+    sigma = diag(sigma);
+    svp = length(find(sigma>1/mu));
+    if svp>=1
+        sigma = sigma(1:svp)-1/mu;
+    else
+        svp = 1;
+        sigma = 0;
+    end
+    J = U(:,1:svp)*diag(sigma)*V(:,1:svp)';
+    %udpate Z
+    Z = inv_a*(atx-A'*E+J+(A'*Y1-Y2)/mu);
+    %update E
+    xmaz = X-A*Z;
+    temp = xmaz+Y1/mu;
+    E = solve_l1l2(temp,lambda/mu);
+    
+    leq1 = xmaz-E;
+    leq2 = Z-J;
+    stopC = max(max(max(abs(leq1))),max(max(abs(leq2))));
+%     if display && (iter==1 || mod(iter,50)==0 || stopC<tol)
+%         disp(['iter ' num2str(iter) ',mu=' num2str(mu,'%2.1e') ...
+%             ',rank=' num2str(rank(Z,1e-4*norm(Z,2))) ',stopALM=' num2str(stopC,'%2.3e')]);
+%     end
+    if stopC<tol 
+        break;
+    else
+        Y1 = Y1 + mu*leq1;
+        Y2 = Y2 + mu*leq2;
+        mu = min(max_mu,mu*rho);
+    end
+end
+
+function [E] = solve_l1l2(W,lambda)
+n = size(W,2);
+E = W;
+for i=1:n
+    E(:,i) = solve_l2(W(:,i),lambda);
+end
+
+function [x] = solve_l2(w,lambda)
+% min lambda |x|_2 + |x-w|_2^2
+nw = norm(w);
+if nw>lambda
+    x = (nw-lambda)*w/nw;
+else
+    x = zeros(length(w),1);
+end
+
+
+================================================
+FILE: solve_l1l2.m
+================================================
+function [E] = solve_l1l2(W,lambda)
+n = size(W,2);
+E = W;
+for i=1:n
+    E(:,i) = solve_l2(W(:,i),lambda);
+end
+end
+
+function [x] = solve_l2(w,lambda)
+% min lambda |x|_2 + |x-w|_2^2
+nw = norm(w);
+if nw>lambda
+    x = (nw-lambda)*w/nw;
+else
+    x = zeros(length(w),1);
+end
+end
+
+
+================================================
+FILE: solve_lrr.m
+================================================
+function [Z,E] = solve_lrr(X,lambda)
+Q = orth(X');
+A = X*Q;
+[Z,E] = lrra(X,A,lambda);
+Z = Q*Z;
+
+
+================================================
+FILE: LDL_DataSets/Artificial_binary.mat
+================================================
+[Binary file]
+
+
+================================================
+FILE: LDL_DataSets/Movie_binary.mat
+================================================
+[Binary file]
+
+
+================================================
+FILE: LDL_DataSets/Natural_Scene_binary.mat
+================================================
+[Binary file]
+
+
+================================================
+FILE: LDL_DataSets/SBU_3DFE_binary.mat
+================================================
+[Binary file]
+
+
+================================================
+FILE: LDL_DataSets/Yeast_alpha_binary.mat
+================================================
+[Binary file]
+
+
+================================================
+FILE: LDL_DataSets/Yeast_cdc_binary.mat
+================================================
+[Binary file]
+
+
+================================================
+FILE: LDL_DataSets/Yeast_cold_binary.mat
+================================================
+[Binary file]
+
+
+================================================
+FILE: LDL_DataSets/Yeast_diau_binary.mat
+================================================
+[Binary file]
+
+
+================================================
+FILE: LDL_DataSets/Yeast_dtt_binary.mat
+================================================
+[Binary file]
+
+
+================================================
+FILE: LDL_DataSets/Yeast_elu_binary.mat
+================================================
+[Binary file]
+
+
+================================================
+FILE: LDL_DataSets/Yeast_heat_binary.mat
+================================================
+[Binary file]
+
+
+================================================
+FILE: LDL_DataSets/Yeast_spo5_binary.mat
+================================================
+[Binary file]
+
+
+================================================
+FILE: LDL_DataSets/Yeast_spo_binary.mat
+================================================
+[Binary file]
+
+
+================================================
+FILE: LDL_DataSets/Yeast_spoem_binary.mat
+================================================
+[Binary file]
+
+
+================================================
+FILE: measures/canberra.m
+================================================
+function distance = canberra(rd,pd)
+%CANBERRA	  Calculate the average Canberra between 
+%               the predicted and the real label distribution.
+%
+%	Description
+%   DISTANCE = Canberra(RD, PD) calculate the average Canberra
+%   between the predicted and the real label distribution.
+%
+%   Inputs,
+%       RD: real label distribution
+%       PD: predicted label distribution
+%
+%   Outputs,
+%       DISTANCE: Canberra
+%	
+temp=abs(pd-rd);
+temp2=pd+rd;
+temp=temp./temp2;
+temp=sum(temp,2);
+distance=mean(temp);
+end
+
+
+
+
+================================================
+FILE: measures/chebyshev.m
+================================================
+function distance = chebyshev(rd,pd)
+%CHEBYSHEV	  Calculate the average Chebyshev between 
+%               the predicted and the real label distribution.
+%
+%	Description
+%   DISTANCE = Chebyshev(RD, PD) calculate the average Chebyshev
+%   between the predicted and the real label distribution.
+%
+%   Inputs,
+%       RD: real label distribution
+%       PD: predicted label distribution
+%
+%   Outputs,
+%       DISTANCE: Chebyshev
+%	
+temp=abs(pd-rd);
+temp=max(temp')';
+distance=mean(temp);
+end
+
+
+
+
+================================================
+FILE: measures/clark.m
+================================================
+function distance=clark(rd,pd)
+%CLARK	  Calculate the average Clark between 
+%               the predicted and the real label distribution.
+%
+%	Description
+%   DISTANCE = Clark(RD, PD) calculate the average Clark
+%   between the predicted and the real label distribution.
+%
+%   Inputs,
+%       RD: real label distribution
+%       PD: predicted label distribution
+%
+%   Outputs,
+%       DISTANCE: Clark
+%	
+temp=pd-rd;
+temp=temp.*temp;
+temp2=pd+rd;
+temp2=temp2.*temp2;
+temp=temp./temp2;
+temp=sum(temp,2);
+temp=sqrt(temp);
+distance=mean(temp);
+end
+
+
+
+
+================================================
+FILE: measures/cosine.m
+================================================
+function distance = cosine(rd,pd)
+%COSINE	  Calculate the average Cosine between 
+%               the predicted and the real label distribution.
+%
+%	Description
+%   DISTANCE = Cosine(RD, PD) calculate the average Cosine
+%   between the predicted and the real label distribution.
+%
+%   Inputs,
+%       RD: real label distribution
+%       PD: predicted label distribution
+%
+%   Outputs,
+%       DISTANCE: Cosine
+%	
+inner=sum(pd.*rd,2);
+len=(sqrt(sum(pd.*pd,2))).*(sqrt(sum(rd.*rd,2)));
+distance=mean(inner./len);
+end
+
+
+
+
+
+================================================
+FILE: measures/intersection.m
+================================================
+function similarity=intersection(rd,pd)
+%INTERSECTION	Calculate the average intersection between the predicted label
+%               distribution and the real label distribution.
+%
+%	Description
+%   SIMILARITY = INTERSECTION(RD, PD)	Calculate the average intersection
+%   between the predicted label distribution and the real label distribution.
+%
+%   Inputs,
+%       RD: real label distribution
+%       PD: predicted label distribution
+%
+%   Outputs,
+%       SIMILARITY: the average of intersection
+%
+temp=sum(min(pd,rd),2);
+similarity=mean(temp);
+end
+
+
+================================================
+FILE: measures/kldist.m
+================================================
+function distance = kldist(rd, pd)
+%KLDIST	  Calculate the average Kullback-Leibler divergence between the predicted label
+%         distribution and the real label distribution.
+%
+%	Description
+%   DISTANCE = KLDIST(RD, PD) calculate the average Kullback-Leibler divergence 
+%   between the predicted label distribution and the real label distribution.
+%
+%   Inputs,
+%       RD: real label distribution
+%       PD: predicted label distribution
+%
+%   Outputs,
+%       DISTANCE: Kullback-Leibler divergence
+%	
+temp=rd.*(log(rd./pd));
+dis = sum(temp,2);
+dis(dis == Inf) = [];
+distance=mean(dis);
+end
+
+
