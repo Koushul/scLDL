@@ -17,9 +17,15 @@ class LIBLE(nn.Module):
         self.lr = lr
         self.epochs = epochs
         self.batch_size = batch_size
-        self.device = device if device else torch.device("cuda" if torch.cuda.is_available() else "cpu")
-        if torch.mps.is_available():
-            self.device = torch.device("mps")
+        if device:
+            self.device = device
+        else:
+            if torch.cuda.is_available():
+                self.device = torch.device("cuda")
+            elif torch.backends.mps.is_available():
+                self.device = torch.device("mps")
+            else:
+                self.device = torch.device("cpu")
         self.encoder_type = encoder_type
         self.input_shape = input_shape
         self.use_mixup = use_mixup
@@ -207,7 +213,15 @@ class LEVI(nn.Module):
         self.lr = lr
         self.epochs = epochs
         self.batch_size = batch_size
-        self.device = device if device else torch.device("cuda" if torch.cuda.is_available() else "cpu")
+        if device:
+            self.device = device
+        else:
+            if torch.cuda.is_available():
+                self.device = torch.device("cuda")
+            elif torch.backends.mps.is_available():
+                self.device = torch.device("mps")
+            else:
+                self.device = torch.device("cpu")
         self.encoder_type = encoder_type
         self.input_shape = input_shape
         self.use_mixup = use_mixup
@@ -412,10 +426,15 @@ class ImprovedLEVI(nn.Module):
         self.lr = lr
         self.epochs = epochs
         self.batch_size = batch_size
-        self.device = device if device else torch.device("cuda" if torch.cuda.is_available() else "cpu")
-        if torch.mps.is_available():
-            self.device = torch.device("mps")
-        self.input_shape = input_shape
+        if device:
+            self.device = device
+        else:
+            if torch.cuda.is_available():
+                self.device = torch.device("cuda")
+            elif torch.backends.mps.is_available():
+                self.device = torch.device("mps")
+            else:
+                self.device = torch.device("cpu")
         self.use_mixup = use_mixup
         self.mixup_alpha = mixup_alpha
         self.encoder_type = encoder_type
@@ -599,8 +618,13 @@ class ImprovedLEVI(nn.Module):
                     # KL Divergence
                     kl_loss = -0.5 * torch.sum(1 + logvar - mean.pow(2) - logvar.exp(), dim=1).mean()
                     
+                    if self.is_image:
+                         batch_X_mix_flat = batch_X_mix.view(batch_X_mix.size(0), -1)
+                    else:
+                         batch_X_mix_flat = batch_X_mix
+
                     # Reconstruction X (MSE)
-                    rec_X_loss = torch.sum((batch_X_mix - X_hat)**2, dim=1).mean()
+                    rec_X_loss = torch.sum((batch_X_mix_flat - X_hat)**2, dim=1).mean()
                     
                     # Reconstruction L (BCE/MSE)
                     rec_L_loss = F.binary_cross_entropy_with_logits(L_hat, batch_L_mix, reduction='sum') / batch_X.size(0)
@@ -615,8 +639,13 @@ class ImprovedLEVI(nn.Module):
                     # KL Divergence
                     kl_loss = -0.5 * torch.sum(1 + logvar - mean.pow(2) - logvar.exp(), dim=1).mean()
                     
+                    if self.is_image:
+                         batch_X_flat = batch_X.view(batch_X.size(0), -1)
+                    else:
+                         batch_X_flat = batch_X
+
                     # Reconstruction X (MSE)
-                    rec_X_loss = torch.sum((batch_X - X_hat)**2, dim=1).mean()
+                    rec_X_loss = torch.sum((batch_X_flat - X_hat)**2, dim=1).mean()
                     
                     # Reconstruction L (BCE/MSE)
                     rec_L_loss = F.binary_cross_entropy_with_logits(L_hat, batch_L, reduction='sum') / batch_X.size(0)
@@ -673,9 +702,15 @@ class ConcentrationLE(nn.Module):
         self.lr = lr
         self.epochs = epochs
         self.batch_size = batch_size
-        self.device = device if device else torch.device("cuda" if torch.cuda.is_available() else "cpu")
-        if torch.mps.is_available():
-            self.device = torch.device("mps")
+        if device:
+            self.device = device
+        else:
+            if torch.cuda.is_available():
+                self.device = torch.device("cuda")
+            elif torch.backends.mps.is_available():
+                self.device = torch.device("mps")
+            else:
+                self.device = torch.device("cpu")
         self.encoder_type = encoder_type
         self.input_shape = input_shape
         self.lambda_epochs = lambda_epochs
@@ -683,7 +718,30 @@ class ConcentrationLE(nn.Module):
         self.mixup_alpha = mixup_alpha
         
         # Encoder
-        if encoder_type == 'cnn':
+        if encoder_type == 'resnet' and input_shape is not None and len(input_shape) >= 2:
+             # Image Data
+            weights = ResNet18_Weights.DEFAULT
+            self.feature_extractor = resnet18(weights=weights)
+            
+            # Modify first layer for 1 channel if input is (1, H, W)
+            if input_shape[0] == 1:
+                original_conv1 = self.feature_extractor.conv1
+                self.feature_extractor.conv1 = nn.Conv2d(1, 64, kernel_size=7, stride=2, padding=3, bias=False)
+                with torch.no_grad():
+                    self.feature_extractor.conv1.weight.data = original_conv1.weight.data.sum(dim=1, keepdim=True)
+                    
+            self.feature_dim = self.feature_extractor.fc.in_features
+            self.feature_extractor.fc = nn.Identity()
+            
+            # Head for Evidence
+            self.encoder_head = nn.Sequential(
+                nn.Linear(self.feature_dim, n_hidden),
+                nn.ReLU(),
+                nn.Linear(n_hidden, n_outputs),
+                nn.Softplus()
+            )
+            self.is_resnet = True
+        elif encoder_type == 'cnn':
             if input_shape is None:
                 raise ValueError("input_shape must be provided for CNN encoder")
             
@@ -709,6 +767,7 @@ class ConcentrationLE(nn.Module):
                 nn.Linear(n_hidden, n_outputs),
                 nn.Softplus() # Evidence must be non-negative
             )
+            self.is_resnet = False
         else:
             self.encoder = nn.Sequential(
                 nn.Linear(n_features, n_hidden),
@@ -718,11 +777,20 @@ class ConcentrationLE(nn.Module):
                 nn.Linear(n_hidden, n_outputs),
                 nn.Softplus() # Evidence must be non-negative
             )
+            self.is_resnet = False
             
         self.to(self.device)
 
     def forward(self, x):
-        if self.encoder_type == 'cnn':
+        if hasattr(self, 'is_resnet') and self.is_resnet:
+             # Reshape X if needed
+            if x.dim() == 2 and self.input_shape is not None:
+                x_in = x.view(-1, *self.input_shape)
+            else:
+                x_in = x
+            h = self.feature_extractor(x_in)
+            evidence = self.encoder_head(h)
+        elif self.encoder_type == 'cnn':
             if x.dim() == 2 and self.input_shape is not None:
                 x = x.view(-1, *self.input_shape)
             h = self.encoder_cnn(x)
@@ -847,8 +915,15 @@ class HybridLEVI(nn.Module):
         self.lr = lr
         self.epochs = epochs
         self.batch_size = batch_size
-        self.device = device if device else torch.device("cuda" if torch.cuda.is_available() else "cpu")
-        if torch.mps.is_available(): self.device = torch.device("mps")
+        if device:
+            self.device = device
+        else:
+            if torch.cuda.is_available():
+                self.device = torch.device("cuda")
+            elif torch.backends.mps.is_available():
+                self.device = torch.device("mps")
+            else:
+                self.device = torch.device("cpu")
         self.encoder_type = encoder_type
         self.input_shape = input_shape
         self.alpha = alpha # KL Weight
@@ -946,7 +1021,11 @@ class HybridLEVI(nn.Module):
                 
                 # Losses
                 kl_loss = -0.5 * torch.sum(1 + logvar - mean.pow(2) - logvar.exp(), dim=1).mean()
-                rec_loss = torch.mean(torch.mean((batch_X - X_hat)**2, dim=1))
+                
+                # Flatten batch_X for reconstruction loss
+                batch_X_flat = batch_X.view(batch_X.size(0), -1)
+                # Use sum over features (dim 1) to match VAE scale and balance KL
+                rec_loss = torch.sum((batch_X_flat - X_hat)**2, dim=1).mean()
                 
                 # CDL Loss
                 alpha = evidence + 1
@@ -980,3 +1059,249 @@ class HybridLEVI(nn.Module):
             b = evidence / S
             u = self.n_outputs / S
             return torch.cat((b, u), dim=1).cpu().numpy()
+
+
+# Import diffusion components
+try:
+    from .diffusion_classifier.card_model import ConditionalModel
+    from .diffusion_classifier.diffusion_utils import make_beta_schedule, q_sample, p_sample_loop
+except ImportError:
+    # Fallback for when running script directly not as package
+    try:
+        from src.scLDL.diffusion_classifier.card_model import ConditionalModel
+        from src.scLDL.diffusion_classifier.diffusion_utils import make_beta_schedule, q_sample, p_sample_loop
+    except ImportError:
+        pass # Will fail later if class is used
+
+class DiffLEVI(nn.Module):
+    """
+    DiffLEVI: Label Enhancement via Diffusion (CARD-based).
+    Replaces the VAE in LEVI with a Conditional Diffusion Model p(y|x).
+    """
+    def __init__(self, n_features, n_outputs, n_hidden=64, n_latent=64, 
+                 timesteps=1000, beta_schedule='linear', lr=1e-3, epochs=100, 
+                 batch_size=32, device=None, encoder_type='mlp', input_shape=None):
+        super(DiffLEVI, self).__init__()
+        self.n_features = n_features
+        self.n_outputs = n_outputs
+        self.n_hidden = n_hidden
+        self.n_latent = n_latent
+        self.timesteps = timesteps
+        self.lr = lr
+        self.epochs = epochs
+        self.batch_size = batch_size
+        self.device = device if device else torch.device("cuda" if torch.cuda.is_available() else "mps" if torch.backends.mps.is_available() else "cpu")
+        self.encoder_type = encoder_type
+        self.input_shape = input_shape
+        
+        # --- Feature Extractor f(x) ---
+        # We reuse the logic from ImprovedLEVI for consistency
+        if encoder_type == 'resnet' and input_shape is not None and len(input_shape) >= 2:
+            # Image Data
+            weights = ResNet18_Weights.DEFAULT
+            self.feature_extractor = resnet18(weights=weights)
+            # Modify first layer for 1 channel if input is (1, H, W)
+            if input_shape[0] == 1:
+                original_conv1 = self.feature_extractor.conv1
+                self.feature_extractor.conv1 = nn.Conv2d(1, 64, kernel_size=7, stride=2, padding=3, bias=False)
+                with torch.no_grad():
+                    self.feature_extractor.conv1.weight.data = original_conv1.weight.data.sum(dim=1, keepdim=True)
+            self.feature_dim = self.feature_extractor.fc.in_features
+            self.feature_extractor.fc = nn.Identity()
+            self.is_image = True
+        else:
+            # 1D Data (e.g., scRNA-seq)
+            self.is_image = False
+            self.feature_dim = n_latent # We project to latent dim directly for diffusion conditioning
+            self.feature_extractor = nn.Sequential(
+                nn.Linear(n_features, n_hidden),
+                nn.ReLU(),
+                nn.Linear(n_hidden, n_hidden),
+                nn.ReLU(),
+                nn.Linear(n_hidden, self.feature_dim)
+            )
+
+        # --- Diffusion Model p(y_t-1 | y_t, x) ---
+        # The ConditionalModel takes x (feature), y (noisy label), and t
+        # We wrap it to adapt inputs
+        
+        # Beta schedule
+        self.betas = make_beta_schedule(schedule=beta_schedule, num_timesteps=timesteps).to(self.device).float()
+        self.alphas = 1.0 - self.betas
+        self.alphas_cumprod = self.alphas.cumprod(dim=0)
+        self.alphas_bar_sqrt = torch.sqrt(self.alphas_cumprod)
+        self.one_minus_alphas_bar_sqrt = torch.sqrt(1 - self.alphas_cumprod)
+        
+        # Conditional Model
+        self.diffusion_model = ConditionalModel(
+            n_steps=timesteps + 1,
+            data_dim=self.feature_dim, # Input will be f(x)
+            y_dim=n_outputs,
+            arch='linear', 
+            feature_dim=n_latent, # Hidden dim for diffusion
+            hidden_dim=n_hidden,
+            guidance=False # We condition on x, which is standard in ConditionalModel
+        )
+        
+        self.to(self.device)
+        
+    def fit(self, X, L, X_val=None, y_val=None):
+        # Local import
+        try:
+            import enlighten
+            use_enlighten = True
+        except ImportError:
+            use_enlighten = False
+
+        X_tensor = torch.FloatTensor(X).to(self.device)
+        L_tensor = torch.FloatTensor(L).to(self.device)
+        
+        dataset = TensorDataset(X_tensor, L_tensor)
+        dataloader = DataLoader(dataset, batch_size=self.batch_size, shuffle=True)
+        
+        optimizer = optim.Adam(self.parameters(), lr=self.lr)
+        
+        self.history = {'loss': [], 'val_acc': []}
+        
+        self.train()
+        
+        if use_enlighten:
+            manager = enlighten.get_manager()
+            epoch_pbar = manager.counter(total=self.epochs, desc='Epochs', unit='epoch', color='green')
+        
+        for epoch in range(self.epochs):
+            total_loss = 0
+            num_batches = 0
+            
+            # Progress bar for batches
+            if use_enlighten:
+                batch_pbar = manager.counter(total=len(dataloader), desc=f'Epoch {epoch+1}/{self.epochs}', unit='batch', color='blue', leave=False)
+            
+            self.train() # Ensure train mode
+            for batch_X, batch_L in dataloader:
+                optimizer.zero_grad()
+                
+                # 1. Extract features f(x)
+                if self.is_image:
+                    if batch_X.dim() == 2 and self.input_shape is not None:
+                         x_in = batch_X.view(-1, *self.input_shape)
+                    else:
+                         x_in = batch_X
+                    features = self.feature_extractor(x_in)
+                else:
+                    features = self.feature_extractor(batch_X)
+                
+                # 2. Diffusion forward pass (add noise to labels)
+                batch_size = batch_X.size(0)
+                t = torch.randint(low=0, high=self.timesteps, size=(batch_size // 2 + 1,)).to(self.device)
+                t = torch.cat([t, self.timesteps - 1 - t], dim=0)[:batch_size]
+                
+                noise = torch.randn_like(batch_L).to(self.device)
+                
+                # In CARD, y_0_hat is often used as mean for forward. 
+                # Here we assume standard forward q(y_t|y_0) which means y_0_hat = y_0 (target labels)
+                y_t = q_sample(batch_L, batch_L, self.alphas_bar_sqrt, self.one_minus_alphas_bar_sqrt, t, noise=noise)
+                
+                # 3. Predict noise
+                output = self.diffusion_model(features, y_t, t)
+                
+                # 4. Loss
+                loss = (noise - output).square().mean()
+                
+                loss.backward()
+                optimizer.step()
+                
+                total_loss += loss.item()
+                num_batches += 1
+                
+                if use_enlighten:
+                    batch_pbar.update()
+                    # We can't easily change description of active counter in enlighten like tqdm set_postfix
+                    # but likely sufficient to see progress. We can print or update separate status.
+                    # Or use batch_pbar.desc = ... 
+                    batch_pbar.desc = f"Epoch {epoch+1}/{self.epochs} Loss: {loss.item():.4f}"
+                
+            avg_loss = total_loss / num_batches if num_batches > 0 else 0
+            self.history['loss'].append(avg_loss)
+            
+            # Validation
+            val_acc_str = ""
+            if X_val is not None and y_val is not None:
+                # Evaluate on validation set
+                # Note: This might be slow for diffusion models
+                try:
+                    probs = self.predict(X_val) # predict sets eval()
+                    y_pred = np.argmax(probs, axis=1)
+                    val_acc = (y_pred == y_val).mean()
+                    self.history['val_acc'].append(val_acc)
+                    val_acc_str = f", Val Acc: {val_acc*100:.2f}%"
+                except Exception as e:
+                    print(f"Validation failed: {e}")
+                    self.history['val_acc'].append(0)
+            
+            if use_enlighten:
+                batch_pbar.close()
+                epoch_pbar.update()
+            
+            print(f"Epoch {epoch+1}/{self.epochs}, Avg Loss: {avg_loss:.4f}{val_acc_str}")
+            
+            self.train() # Set back to train mode for next epoch
+            
+        if use_enlighten:
+            manager.stop()
+                
+        return self
+        
+    def predict(self, X, n_samples=1):
+        self.eval()
+        with torch.no_grad():
+            X_tensor = torch.FloatTensor(X).to(self.device)
+            batch_size = X_tensor.size(0)
+            
+            # 1. Extract features
+            if self.is_image:
+                 if X_tensor.dim() == 2 and self.input_shape is not None:
+                     x_in = X_tensor.view(-1, *self.input_shape)
+                 else:
+                     x_in = X_tensor
+                 features = self.feature_extractor(x_in)
+            else:
+                 features = self.feature_extractor(X_tensor)
+                 
+            # 2. Denoise loop
+            if n_samples > 1:
+                features = features.repeat_interleave(n_samples, dim=0)
+
+            y_0_hat = torch.ones(features.size(0), self.n_outputs).to(self.device) / self.n_outputs
+            y_T_mean = y_0_hat # Simple prior
+            
+            y_0_pred = p_sample_loop(
+                self.diffusion_model, 
+                features, 
+                y_0_hat, 
+                y_T_mean, 
+                self.timesteps, 
+                self.alphas, 
+                self.one_minus_alphas_bar_sqrt, 
+                only_last_sample=True
+            )
+            
+            if n_samples > 1:
+                 y_0_pred = y_0_pred.reshape(batch_size, n_samples, self.n_outputs).mean(dim=1)
+            
+            return F.softmax(y_0_pred, dim=1).cpu().numpy()
+            
+    def get_latent(self, X):
+        """Returns the feature embedding f(x)"""
+        self.eval()
+        with torch.no_grad():
+            X_tensor = torch.FloatTensor(X).to(self.device)
+            if self.is_image:
+                 if X_tensor.dim() == 2 and self.input_shape is not None:
+                     x_in = X_tensor.view(-1, *self.input_shape)
+                 else:
+                     x_in = X_tensor
+                 features = self.feature_extractor(x_in)
+            else:
+                 features = self.feature_extractor(X_tensor)
+            return features.cpu().numpy()

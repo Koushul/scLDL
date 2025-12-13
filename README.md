@@ -74,6 +74,39 @@ graph TD
     style Uncertainty fill:#444,stroke:#333,stroke-width:2px
 ```
 
+### 4. DiffLEVI: Label Enhancement via Diffusion
+**DiffLEVI** represents a paradigm shift from Variational Inference (VAE) to **Conditional Diffusion Models** for label enhancement. It replaces the VAE backbone of LEVI with a CARD (Classification and Regression Diffusion) based model.
+
+#### Theoretical Justification
+While VAEs (used in LEVI) are powerful, they impose a restrictive Gaussian assumption on the latent posterior $q(z|x,l)$ and often suffer from "posterior collapse" where the decoder ignores the latent code.
+
+**DiffLEVI** instead models the conditional distribution $p(y|x)$ directly using a diffusion process:
+- **Forward Process**: Gradually adds Gaussian noise to the label distribution until it becomes pure noise $y_T$.
+- **Reverse Process**: Learn initialized denoising dynamics to recover the clean label distribution $y_0$ starting from noise, conditioned on the input features $x$.
+$$ p_\theta(y_{0:T} | x) = p(y_T) \prod_{t=1}^T p_\theta(y_{t-1} | y_t, x) $$
+
+This allows for modeling highly complex, multi-modal label distributions without explicit latent variable optimization, offering potentially sharper and more accurate label recovery.
+
+#### DiffLEVI Architecture Schematic
+
+```mermaid
+graph TD
+    subgraph "Feature Extractor"
+        Input_X[Input X] -->|ResNet / MLP| Features["Features f(x)"]
+    end
+    
+    subgraph "Reverse Diffusion Process (Inference)"
+        Prior["Gaussian Noise y_T"] -->|Step T| Y_T["y_T"]
+        Y_T -->|Denoise Net| Pred_Noise["Predict Noise ε"]
+        Features --> Pred_Noise
+        Pred_Noise -->|Subtract Noise| Y_T_1["y_{T-1}"]
+        Y_T_1 -.->|Iterate| Y_0["Enhanced Label y_0"]
+    end
+    
+    style Features fill:#444,stroke:#333,stroke-width:2px
+    style Y_0 fill:#444,stroke:#333,stroke-width:2px
+```
+
 ## Implementation Details
 
 ### Model Architecture (`src/scLDL/models/label_enhancer.py`)
