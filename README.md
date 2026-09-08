@@ -1,138 +1,87 @@
 # scLDL
-## Single Cell Label Distribution Learning
 
-Since biology is rarely black and white, and forcing your cells into rigid identity boxes is basically gaslighting. Sometimes a cell is just 60% sure of who it wants to be when it grows up.
+Single-cell **label distribution learning**: predict a distribution over cell types instead of a single hard label.
 
-scLDL proposes a new framework for cell type annotation from single cell gene expresison profiles.
+This repo was cleaned up so the next step is a real annotation pipeline, not more disconnected MNIST scripts.
 
-# LabelEnhancer Module
+## Install
 
-The `LabelEnhancer` module is a core component of scLDL, designed to recover soft label distributions from hard logical labels (e.g., cluster assignments). It is built upon the **Label Information Bottleneck (LIB)** principle, adapted for single-cell data.
-
-## Theoretical Foundation
-scLDL leverages **Variational Inference** and **Concentration Distribution Learning** to recover latent label distributions.
-
-### 1. Label Enhancement via Variational Inference (LEVI)
-LEVI treats the label enhancement problem as inference in a generative model. We assume there exists a latent variable $z$ that generates both the input features $x$ (gene expression) and the observed logical labels $l$.
-- **Generative Model**: $p_\theta(x, l | z)$
-- **Inference Model**: $q_\phi(z | x, l)$
-
-By maximizing the Evidence Lower Bound (ELBO), we learn a latent space $z$ that captures the underlying structure of the data, which is then used to reconstruct the soft label distributions.
-
-$$ \mathcal{L}_{LEVI} = \mathbb{E}_{q(z|x,l)}[\log p(x|z) + \log p(l|z)] - D_{KL}(q(z|x,l) || p(z)) $$
-
-### 2. Concentration Distribution Learning (ConcentrationLE)
-ConcentrationLE models the target label distribution as a **Dirichlet Distribution**. Instead of predicting a single probability vector, the network predicts the **Evidence** $e_k$ for each class, which parameterizes the Dirichlet distribution $Dir(\alpha)$, where $\alpha_k = e_k + 1$.
-
-- **Beliefs ($b_k$)**: The probability mass assigned to class $k$. $b_k = e_k / S$, where $S = \sum \alpha_k$.
-- **Uncertainty ($u$)**: The unassigned probability mass (background term). $u = K / S$, where $K$ is the number of classes.
-- **Objective**: We minimize the Mean Squared Error (MSE) between the expected probability distribution and the ground truth labels, plus a variance regularization term.
-
-### 3. HybridLEVI
-**HybridLEVI** combines the best of both worlds:
-1.  **VAE Backbone**: Learns a robust, regularized latent space $z$ via LEVI's variational objective.
-2.  **Concentration Head**: The decoder predicts Evidence $e$ from $z$, allowing for explicit uncertainty quantification alongside label prediction.
-
-This results in a model that is both generative (good feature learning) and uncertainty-aware (robust predictions).
-
-### 4. HybridLEVI Architecture Schematic
-
-```mermaid
-graph TD
-    %% Encoder Section
-    subgraph "Encoder (VAE)"
-        Input_X[Input X] -->|Conv2D / MLP| Hidden[Hidden Layers]
-        Hidden --> Mu[Mean μ]
-        Hidden --> LogVar[LogVar σ²]
-        Mu & LogVar -->|Reparameterize| Z((Latent Z))
-    end
-
-    %% Decoders Section
-    subgraph "Dual Decoders"
-        Z -->|Decoder X| Rec_X[Reconstruction X̂]
-        Z -->|Decoder Evidence| Evidence[Evidence e]
-        Evidence -->|Softplus + 1| Alpha[Concentration α]
-    end
-
-    %% Output & Loss Section
-    subgraph "Outputs & Objectives"
-        Alpha -->|Normalization| Beliefs[Beliefs b]
-        Alpha -->|Inverse Sum| Uncertainty[Uncertainty u]
-        
-        Rec_X -.->|MSE| Loss_Rec[Reconstruction Loss]
-        Evidence -.->|CDL Loss| Loss_CDL[Concentration Loss]
-        Z -.->|KL Divergence| Loss_KL[Regularization]
-    end
-
-    %% Relationships
-    Input_X -.-> Loss_Rec
-    True_Labels[True Labels L] -.-> Loss_CDL
-
-    %% Styling
-    style Z fill:#444,stroke:#333,stroke-width:2px
-    style Beliefs fill:#444,stroke:#333,stroke-width:2px
-    style Uncertainty fill:#444,stroke:#333,stroke-width:2px
+```bash
+pip install -e ".[dev]"
 ```
 
-### 4. DiffLEVI: Label Enhancement via Diffusion
-**DiffLEVI** represents a paradigm shift from Variational Inference (VAE) to **Conditional Diffusion Models** for label enhancement. It replaces the VAE backbone of LEVI with a CARD (Classification and Regression Diffusion) based model.
+Python 3.10+ and PyTorch are required.
 
-#### Theoretical Justification
-While VAEs (used in LEVI) are powerful, they impose a restrictive Gaussian assumption on the latent posterior $q(z|x,l)$ and often suffer from "posterior collapse" where the decoder ignores the latent code.
+## Annotation pipeline
 
-**DiffLEVI** instead models the conditional distribution $p(y|x)$ directly using a diffusion process:
-- **Forward Process**: Gradually adds Gaussian noise to the label distribution until it becomes pure noise $y_T$.
-- **Reverse Process**: Learn initialized denoising dynamics to recover the clean label distribution $y_0$ starting from noise, conditioned on the input features $x$.
-$$ p_\theta(y_{0:T} | x) = p(y_T) \prod_{t=1}^T p_\theta(y_{t-1} | y_t, x) $$
-
-This allows for modeling highly complex, multi-modal label distributions without explicit latent variable optimization, offering potentially sharper and more accurate label recovery.
-
-#### DiffLEVI Architecture Schematic
-
-```mermaid
-graph TD
-    subgraph "Feature Extractor"
-        Input_X[Input X] -->|ResNet / MLP| Features["Features f(x)"]
-    end
-    
-    subgraph "Reverse Diffusion Process (Inference)"
-        Prior["Gaussian Noise y_T"] -->|Step T| Y_T["y_T"]
-        Y_T -->|Denoise Net| Pred_Noise["Predict Noise ε"]
-        Features --> Pred_Noise
-        Pred_Noise -->|Subtract Noise| Y_T_1["y_{T-1}"]
-        Y_T_1 -.->|Iterate| Y_0["Enhanced Label y_0"]
-    end
-    
-    style Features fill:#444,stroke:#333,stroke-width:2px
-    style Y_0 fill:#444,stroke:#333,stroke-width:2px
-```
-
-## Implementation Details
-
-### Model Architecture (`src/scLDL/models/label_enhancer.py`)
--   **`LabelEncoder`**: Maps expression vectors to a latent space using LayerNorm and LeakyReLU.
--   **`LabelLogicalDecoder`**: Reconstructs logical labels.
--   **`LabelDistributionDecoder`**: Predicts the soft label distribution.
--   **`LabelGapDecoder`**: Estimates the uncertainty/gap.
-
-### Usage Example
+Use models that map expression `X` to a label distribution **without** needing labels at inference:
 
 ```python
-from scLDL.models.label_enhancer import LabelEnhancer
-from scLDL.models.trainer import LabelEnhancerTrainer
-from scLDL.utils.data import scDataset
+from scLDL import AnnotationPipeline
+import scanpy as sc
 
-# 1. Load Data
-dataset = scDataset(adata, label_key='cell_type', spatial_key='spatial')
+ref = sc.read_h5ad("reference.h5ad")
+query = sc.read_h5ad("query.h5ad")
 
-# 2. Initialize Model
-model = LabelEnhancer(x_dim=dataset.get_input_dim(), d_dim=dataset.get_num_classes())
+pipe = AnnotationPipeline(model="concentration", n_top_genes=2000, epochs=40)
+pipe.fit(ref, label_key="cell_type")
 
-# 3. Train
-trainer = LabelEnhancerTrainer(model, lambda_spatial=0.1)
-trainer.train(dataloader)
-
-# 4. Predict
-distributions = trainer.predict(dataloader)
-adata.obsm['X_label_enhanced'] = distributions
+query = pipe.annotate(query)
+print(query.obs["scldl_pred"].head())
+print(query.obsm["X_scldl"][:5])
+print(pipe.evaluate(query, label_key="cell_type"))
 ```
+
+`model` can be:
+
+| Name | Class | Role |
+|---|---|---|
+| `mlp` | `MLPBaseline` | Softmax classifier baseline |
+| `concentration` | `ConcentrationLE` | Dirichlet / evidential head (default) |
+| `hybrid` | `HybridLEVI` | VAE + evidential head |
+| `lible` | `LIBLE` | Label information bottleneck, `X` only |
+
+Evidential models also write `query.obs["scldl_uncertainty"]`.
+
+## Label enhancement (not annotation)
+
+`LEVI` and `ImprovedLEVI` encode `q(z | x, l)`. They **need logical labels at predict time** and should not be used to annotate unlabeled query cells.
+
+```python
+from scLDL.models import LEVI
+
+model = LEVI(n_features=n_genes, n_outputs=n_types)
+model.fit(X_train, L_onehot)
+soft = model.predict(X_train, L_onehot)
+```
+
+## Layout
+
+```
+src/scLDL/
+  pipeline.py      # AnnotationPipeline
+  data.py          # AnnData preprocess + gene alignment
+  metrics.py       # accuracy / F1 and LDL distances
+  models/          # trainers with .fit / .predict
+tests/             # pytest
+experiments/       # longer research scripts
+docs/notes/        # paper notes and old design docs
+```
+
+## Metrics
+
+- Classification: accuracy, macro-F1 on argmax labels
+- Distributions (when you have a true simplex): Chebyshev, Clark, Canberra, cosine, intersection, KL, MSE
+
+The toy recovery experiment is `python experiments/benchmark_toy.py`.
+
+## What was removed
+
+Broken or unreferenced pieces from the previous dump: DiffLEVI (CARD code was never in the repo), LESC, fictional `LabelEnhancerTrainer` / `scDataset` / `ConcentrationLDL` modules, Streamlit MNIST mixup apps, and duplicate training scripts that imported missing files.
+
+## Next work
+
+1. Train `AnnotationPipeline` on a public reference (e.g. tonsil or PBMC) and score a held-out query, including cross-dataset gene alignment.
+2. Compare against label transfer / scANVI, not only an internal MLP.
+3. Optional: graph smoothing of predicted distributions on the kNN graph; Negative Binomial reconstruction for RNA.
+4. Do not bring back diffusion or LESC until those dependencies live in this repo and have tests.
