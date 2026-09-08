@@ -1,6 +1,7 @@
 """scLDL: single-cell label distribution learning and annotation."""
 
-from scLDL.metrics import classification_metrics, distribution_metrics
+from scLDL.benchmark import ALL_METHODS, CORE_METHODS, run_benchmark, summarize
+from scLDL.metrics import classification_metrics, distribution_metrics, score_annotations
 from scLDL.models import (
     ANNOTATION_MODELS,
     ConcentrationLE,
@@ -23,4 +24,9 @@ __all__ = [
     "ANNOTATION_MODELS",
     "classification_metrics",
     "distribution_metrics",
+    "score_annotations",
+    "run_benchmark",
+    "summarize",
+    "CORE_METHODS",
+    "ALL_METHODS",
 ]

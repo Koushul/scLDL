@@ -37,22 +37,17 @@ def align_to_genes(adata, var_names, copy: bool = True):
     ad = adata.copy() if copy else adata
     query_names = pd.Index(ad.var_names.astype(str))
     target = pd.Index(np.asarray(var_names).astype(str))
-    overlap = target.intersection(query_names)
-    if len(overlap) == 0:
+    overlap = int(target.isin(query_names).sum())
+    if overlap == 0:
         raise ValueError("No overlapping genes between reference and query.")
 
-    x = np.zeros((ad.n_obs, len(target)), dtype=np.float32)
-    query_pos = {g: i for i, g in enumerate(query_names)}
-    dense = to_dense(ad.X)
-    for j, gene in enumerate(target):
-        i = query_pos.get(gene)
-        if i is not None:
-            x[:, j] = dense[:, i]
+    dense = pd.DataFrame(to_dense(ad.X), columns=query_names)
+    x = dense.reindex(columns=target, fill_value=0.0).to_numpy(dtype=np.float32)
 
     out = ad_mod.AnnData(x, obs=ad.obs.copy())
     out.var_names = target
     out.obs_names = ad.obs_names
-    return out, len(overlap)
+    return out, overlap
 
 
 def labels_to_onehot(values, classes=None):

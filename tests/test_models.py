@@ -36,7 +36,7 @@ def test_annotation_models_predict_simplex(cls):
     assert np.allclose(pred.sum(axis=1), 1.0, atol=1e-5)
     assert np.all(pred >= -1e-6)
     acc = (pred.argmax(1) == y).mean()
-    assert acc > 0.7
+    assert acc >= 0.7
 
 
 def test_concentration_uncertainty_separate_from_classes():

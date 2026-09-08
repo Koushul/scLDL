@@ -60,20 +60,59 @@ soft = model.predict(X_train, L_onehot)
 ```
 src/scLDL/
   pipeline.py      # AnnotationPipeline
+  benchmark/       # hold-out / cross-dataset annotation comparison
   data.py          # AnnData preprocess + gene alignment
-  metrics.py       # accuracy / F1 and LDL distances
+  metrics.py       # accuracy / F1, calibration, and LDL distances
   models/          # trainers with .fit / .predict
 tests/             # pytest
 experiments/       # longer research scripts
 docs/notes/        # paper notes and old design docs
 ```
 
+## Annotation benchmark
+
+Compare scLDL models to simple baselines and existing Python annotation tools on the **same genes and split**. HVGs and the scaler are fit on the training/reference cells only.
+
+| Method | What it is |
+|---|---|
+| `majority` | Predict the training class frequencies |
+| `logistic` | Multinomial logistic regression |
+| `svm` | Linear SVM (softmax of decision scores) |
+| `knn` | Distance-weighted kNN on scaled HVGs |
+| `pca_knn` | PCA then kNN (Seurat/scanpy-style transfer) |
+| `scanpy_ingest` | `scanpy.tl.ingest` label transfer |
+| `scldl_mlp` / `scldl_concentration` / `scldl_hybrid` / `scldl_lible` | This package |
+| `celltypist` | Optional (`pip install -e ".[bench]"`) |
+| `scanvi` | Optional (`pip install -e ".[scanvi]"`); skipped unless raw counts are present |
+
+```python
+from scLDL import run_benchmark, summarize
+import scanpy as sc
+
+adata = sc.read_h5ad("reference.h5ad")
+results = run_benchmark(adata, label_key="cell_type", n_repeats=3)
+print(summarize(results))
+```
+
+CLI:
+
+```bash
+python experiments/run_annotation_benchmark.py --adata reference.h5ad --label cell_type --repeats 3 --out reports/annotation_benchmark.csv
+python experiments/run_annotation_benchmark.py --adata ref.h5ad --query query.h5ad --label cell_type
+python experiments/run_annotation_benchmark.py --adata reference.h5ad --noise-rate 0.2 --repeats 3
+```
+
+Reported metrics: accuracy, balanced accuracy, macro-F1, log loss, Brier, ECE, plus LDL distances against one-hot test labels. Neural/CellTypist methods use log-normalized HVGs; sklearn/ingest methods use the same genes after a train-fit `StandardScaler`. `scanpy_ingest` is skipped if Scanpy's ingest stack cannot import (for example a JAX/ml_dtypes mismatch); `pca_knn` is the same idea without that dependency.
+
 ## Metrics
 
-- Classification: accuracy, macro-F1 on argmax labels
+- Classification: accuracy, balanced accuracy, macro-F1
+- Probabilities: log loss, Brier, expected calibration error
 - Distributions (when you have a true simplex): Chebyshev, Clark, Canberra, cosine, intersection, KL, MSE
 
-The toy recovery experiment is `python experiments/benchmark_toy.py`.
+Toy LDL recovery: `python experiments/benchmark_toy.py`.
+
+Annotation comparison: `python experiments/run_annotation_benchmark.py --adata your.h5ad`.
 
 ## What was removed
 
@@ -81,7 +120,6 @@ Broken or unreferenced pieces from the previous dump: DiffLEVI (CARD code was ne
 
 ## Next work
 
-1. Train `AnnotationPipeline` on a public reference (e.g. tonsil or PBMC) and score a held-out query, including cross-dataset gene alignment.
-2. Compare against label transfer / scANVI, not only an internal MLP.
-3. Optional: graph smoothing of predicted distributions on the kNN graph; Negative Binomial reconstruction for RNA.
-4. Do not bring back diffusion or LESC until those dependencies live in this repo and have tests.
+1. Run `run_annotation_benchmark.py` on a public PBMC/tonsil dataset and keep the CSV in `reports/`.
+2. Optional: graph smoothing of predicted distributions; Negative Binomial reconstruction for RNA.
+3. Do not bring back diffusion or LESC until those dependencies live in this repo and have tests.
