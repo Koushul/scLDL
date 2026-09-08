@@ -1,5 +1,11 @@
 import numpy as np
-from scLDL.state_targets import blend_targets, knn_smooth_labels, lineage_laplacian, pancreas_lineage_edges
+from scLDL.state_targets import (
+    blend_targets,
+    knn_smooth_labels,
+    lineage_laplacian,
+    pancreas_lineage_edges,
+    probabilistic_neighbors,
+)
 
 
 def test_blend_and_smooth():
@@ -13,6 +19,24 @@ def test_blend_and_smooth():
     M = M / M.sum(axis=1, keepdims=True)
     B = blend_targets((Y, 0.4), (D, 0.4), (M, 0.2))
     assert np.allclose(B.sum(axis=1), 1.0, atol=1e-5)
+
+
+def test_probabilistic_neighbors_row_stochastic():
+    rng = np.random.default_rng(2)
+    X = rng.normal(size=(25, 8)).astype(np.float32)
+    P = probabilistic_neighbors(X, n_neighbors=6, n_pcs=4)
+    assert P.shape == (25, 25)
+    assert np.allclose(P.sum(axis=1), 1.0, atol=1e-5)
+    assert np.all(P >= -1e-12)
+    np.fill_diagonal(P, 0.0)
+    assert np.all(P.sum(axis=1) > 0.99)
+
+    Y = np.eye(3, dtype=np.float32)[rng.integers(0, 3, size=25)]
+    adaptive, S = knn_smooth_labels(X, Y, n_neighbors=6, n_iter=4, method="adaptive", return_graph=True)
+    legacy = knn_smooth_labels(X, Y, n_neighbors=6, n_iter=4, method="global_rbf")
+    assert np.allclose(adaptive.sum(axis=1), 1.0, atol=1e-5)
+    assert np.allclose(S.sum(axis=1), 1.0, atol=1e-5)
+    assert not np.allclose(adaptive, legacy, atol=1e-4)
 
 
 def test_state_model_predicts_simplex():

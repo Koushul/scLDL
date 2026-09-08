@@ -89,12 +89,15 @@ class StateConcentrationLE(ModelBase):
         diff = mean - target
         return torch.mean(torch.sum(diff * (diff @ self.lineage_L), dim=1))
 
-    def _manifold(self, h, mean):
-        hn = F.normalize(h, dim=1)
-        sim = torch.clamp(hn @ hn.t(), 0, 1)
+    def _manifold(self, h, mean, neighbor_p=None):
         p = mean
         pn = (p**2).sum(1, keepdim=True)
         pdist = torch.clamp(pn + pn.t() - 2 * (p @ p.t()), min=0)
+        if neighbor_p is not None:
+            mass = neighbor_p.sum()
+            return (neighbor_p * pdist).sum() / torch.clamp(mass, min=1e-8)
+        hn = F.normalize(h, dim=1)
+        sim = torch.clamp(hn @ hn.t(), 0, 1)
         n = h.size(0)
         return (sim * pdist).sum() / (n * n)
 
@@ -112,35 +115,47 @@ class StateConcentrationLE(ModelBase):
         w = L @ inv
         return w * (L.size(0) / torch.clamp(w.sum(), min=1e-6))
 
-    def fit(self, X, L):
+    def fit(self, X, L, neighbor_p=None):
         X_t, L_t = to_float_tensors(X, L, self.device)
         L_t = torch.clamp(L_t, min=0)
         L_t = L_t / torch.clamp(L_t.sum(dim=1, keepdim=True), min=1e-6)
+        idx_t = torch.arange(len(X_t), device=self.device)
+        P = None
+        if neighbor_p is not None:
+            P = torch.as_tensor(neighbor_p, dtype=torch.float32, device=self.device)
         if self.class_balance:
             y_hard = L_t.argmax(dim=1).cpu().numpy()
             freq = np.bincount(y_hard, minlength=self.n_outputs).astype(np.float64)
             freq[freq == 0] = 1.0
-            sw = (1.0 / freq[y_hard])
+            sw = 1.0 / freq[y_hard]
             sw = sw / sw.mean()
             sampler = WeightedRandomSampler(sw, num_samples=len(sw), replacement=True)
             loader = DataLoader(
-                TensorDataset(X_t, L_t),
+                TensorDataset(idx_t, X_t, L_t),
                 batch_size=self.batch_size,
                 sampler=sampler,
                 drop_last=len(X_t) > self.batch_size,
             )
         else:
-            loader = DataLoader(TensorDataset(X_t, L_t), batch_size=self.batch_size, shuffle=True)
+            loader = DataLoader(
+                TensorDataset(idx_t, X_t, L_t), batch_size=self.batch_size, shuffle=True
+            )
 
         optimizer = optim.AdamW(self.parameters(), lr=self.lr, weight_decay=1e-4)
         self.train()
         for epoch in range(self.epochs):
             total = 0.0
             n = 0
-            for batch_x, batch_l in loader:
-                if self.mixup_alpha and self.mixup_alpha > 0:
-                    batch_x, batch_l = mixup_batch(batch_x, batch_l, self.mixup_alpha)
+            for batch_i, batch_x, batch_l in loader:
                 optimizer.zero_grad()
+                mixed = bool(self.mixup_alpha and self.mixup_alpha > 0)
+                man_term = None
+                if self.manifold_weight and P is not None and mixed:
+                    h0, _, alpha0 = self.forward(batch_x)
+                    mean0 = alpha0 / torch.sum(alpha0, dim=1, keepdim=True)
+                    man_term = self._manifold(h0.detach(), mean0, P[batch_i][:, batch_i])
+                if mixed:
+                    batch_x, batch_l = mixup_batch(batch_x, batch_l, self.mixup_alpha)
                 h, _, alpha = self.forward(batch_x)
                 mean = alpha / torch.sum(alpha, dim=1, keepdim=True)
                 weights = self._sample_weights(batch_l)
@@ -155,7 +170,10 @@ class StateConcentrationLE(ModelBase):
                 if self.lineage_weight:
                     loss = loss + self.lineage_weight * self._lineage_residual(mean, batch_l)
                 if self.manifold_weight:
-                    loss = loss + self.manifold_weight * self._manifold(h.detach(), mean)
+                    if man_term is None:
+                        sub_p = P[batch_i][:, batch_i] if P is not None else None
+                        man_term = self._manifold(h.detach(), mean, sub_p)
+                    loss = loss + self.manifold_weight * man_term
                 if self.vacuity_weight:
                     loss = loss + self.vacuity_weight * self._vacuity(alpha, batch_l)
                 loss.backward()

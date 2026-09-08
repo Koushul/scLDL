@@ -103,30 +103,17 @@ def _summarize(name, proba, u, y_te, ad_te, classes):
     return metrics, pd.DataFrame(rows), corrs, mix
 
 
-def main():
-    ad, ad_f, X, y, y_int, onehot = _prepare()
-    classes = np.array(ORDER)
-    tr, te = train_test_split(np.arange(len(y)), test_size=0.2, random_state=0, stratify=y_int)
-    marker_tr = marker_targets(X[tr], ad_f.var_names, MARKERS, ORDER, temperature=0.65)
-    graph_tr = knn_smooth_labels(X[tr], onehot[tr], n_neighbors=20, alpha=0.75, n_iter=20)
-    soft_tr = blend_targets((onehot[tr], 0.25), (graph_tr, 0.45), (marker_tr, 0.30))
-
-    print("Soft target entropy by cluster (train):")
-    ent = (-soft_tr * np.log(np.clip(soft_tr, 1e-8, 1))).sum(1)
+def _print_target_entropy(title, soft, y_tr):
+    print(title)
+    ent = (-soft * np.log(np.clip(soft, 1e-8, 1))).sum(1)
     for st in ORDER:
-        m = y[tr] == st
-        print(f"  {st:16s} mean H={ent[m].mean():.3f}  P_self={soft_tr[m, ORDER.index(st)].mean():.3f}")
+        m = y_tr == st
+        print(f"  {st:16s} mean H={ent[m].mean():.3f}  P_self={soft[m, ORDER.index(st)].mean():.3f}")
 
-    print("\nTraining baseline ConcentrationLE on one-hots...")
-    base = ConcentrationLE(
-        n_features=X.shape[1], n_outputs=8, n_hidden=256, epochs=40, batch_size=128, verbose=True
-    )
-    base.fit(X[tr], onehot[tr])
-    p0, u0 = base.predict_evidence(X[te])
 
-    print("\nTraining StateConcentrationLE on blended soft targets...")
-    state = StateConcentrationLE(
-        n_features=X.shape[1],
+def _fit_state(X_tr, soft, neighbor_p):
+    model = StateConcentrationLE(
+        n_features=X_tr.shape[1],
         n_outputs=8,
         n_hidden=256,
         epochs=50,
@@ -140,13 +127,58 @@ def main():
         lineage_edges=pancreas_lineage_edges(),
         verbose=True,
     )
-    state.fit(X[tr], soft_tr)
-    p1, u1 = state.predict_evidence(X[te])
+    model.fit(X_tr, soft, neighbor_p=neighbor_p)
+    return model
+
+
+def main():
+    ad, ad_f, X, y, y_int, onehot = _prepare()
+    classes = np.array(ORDER)
+    tr, te = train_test_split(np.arange(len(y)), test_size=0.2, random_state=0, stratify=y_int)
+    marker_tr = marker_targets(X[tr], ad_f.var_names, MARKERS, ORDER, temperature=0.65)
+    graph_rbf, P_rbf = knn_smooth_labels(
+        X[tr], onehot[tr], n_neighbors=20, alpha=0.75, n_iter=20, method="global_rbf", return_graph=True
+    )
+    graph_prob, P_prob = knn_smooth_labels(
+        X[tr],
+        onehot[tr],
+        n_neighbors=30,
+        alpha=0.75,
+        n_iter=20,
+        method="adaptive",
+        n_pcs=40,
+        return_graph=True,
+    )
+    soft_rbf = blend_targets((onehot[tr], 0.25), (graph_rbf, 0.45), (marker_tr, 0.30))
+    soft_prob = blend_targets((onehot[tr], 0.25), (graph_prob, 0.45), (marker_tr, 0.30))
+
+    _print_target_entropy("\nSoft targets (global RBF kNN):", soft_rbf, y[tr])
+    _print_target_entropy("\nSoft targets (adaptive probabilistic):", soft_prob, y[tr])
+
+    print("\nTraining baseline ConcentrationLE on one-hots...")
+    base = ConcentrationLE(
+        n_features=X.shape[1], n_outputs=8, n_hidden=256, epochs=40, batch_size=128, verbose=True
+    )
+    base.fit(X[tr], onehot[tr])
+    p0, u0 = base.predict_evidence(X[te])
+
+    print("\nTraining StateConcentrationLE with global RBF neighbors...")
+    state_rbf = _fit_state(X[tr], soft_rbf, P_rbf)
+    p1, u1 = state_rbf.predict_evidence(X[te])
+
+    print("\nTraining StateConcentrationLE with probabilistic neighbors...")
+    state_prob = _fit_state(X[tr], soft_prob, P_prob)
+    p2, u2 = state_prob.predict_evidence(X[te])
 
     ad_te = ad[te]
     y_te = y[te]
+    runs = [
+        ("ConcentrationLE", p0, u0),
+        ("State + RBF kNN", p1, u1),
+        ("State + probabilistic kNN", p2, u2),
+    ]
     print("\n===== HELD-OUT vs cluster labels =====")
-    for name, p, u in [("ConcentrationLE", p0, u0), ("StateConcentrationLE", p1, u1)]:
+    for name, p, u in runs:
         metrics, by_state, corrs, mix = _summarize(name, p, u, y_te, ad_te, classes)
         print(f"\n{name}")
         print(
@@ -158,14 +190,13 @@ def main():
         cols = ["state", "P_self", "entropy", "u", "P_Ductal", "P_Ngn3 low EP", "P_Beta", "P_Alpha", "P_Delta", "P_Epsilon"]
         print(by_state[cols].round(3).to_string(index=False))
 
-    # marker-aligned identity among alpha/beta
     print("\n===== Hormone tracking inside Alpha/Beta (held-out) =====")
-    for name, p in [("ConcentrationLE", p0), ("StateConcentrationLE", p1)]:
+    for name, p, _ in runs:
         p_map = {c: p[:, i] for i, c in enumerate(ORDER)}
         for st, score, pred in [("Beta", "score_beta", "Beta"), ("Alpha", "score_alpha", "Alpha")]:
             m = y_te == st
             r, _ = spearmanr(np.asarray(ad_te.obs[score])[m], p_map[pred][m])
-            print(f"{name:22s} {st:6s} {score} vs P({pred}) r={r:.3f}")
+            print(f"{name:28s} {st:6s} {score} vs P({pred}) r={r:.3f}")
 
 
 if __name__ == "__main__":
