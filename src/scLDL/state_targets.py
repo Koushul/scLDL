@@ -150,3 +150,8 @@ def lineage_laplacian(edges, n_classes: int):
 def pancreas_lineage_edges():
     """Ductal-Ngn3low-Ngn3high-Pre-endocrine-{Beta,Alpha,Delta,Epsilon}."""
     return [(0, 1), (1, 2), (2, 3), (3, 4), (3, 5), (3, 6), (3, 7)]
+
+
+def cd8_til_lineage_edges():
+    """NaiveLike-CM-EM-{TEMRA,TPEX-TEX} with MAIT off the memory axis."""
+    return [(0, 1), (1, 2), (2, 3), (2, 4), (4, 5), (2, 5), (2, 6)]

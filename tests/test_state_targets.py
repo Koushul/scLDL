@@ -1,6 +1,7 @@
 import numpy as np
 from scLDL.state_targets import (
     blend_targets,
+    cd8_til_lineage_edges,
     knn_smooth_labels,
     lineage_laplacian,
     pancreas_lineage_edges,
@@ -64,8 +65,8 @@ def test_state_model_predicts_simplex():
     assert np.allclose(pred.sum(axis=1), 1.0, atol=1e-4)
 
 
-def test_pancreas_laplacian():
-    L = lineage_laplacian(pancreas_lineage_edges(), 8)
-    assert L.shape == (8, 8)
+def test_cd8_laplacian():
+    L = lineage_laplacian(cd8_til_lineage_edges(), 7)
+    assert L.shape == (7, 7)
     assert np.allclose(L, L.T)
     assert np.allclose(L.sum(axis=1), 0.0, atol=1e-5)
