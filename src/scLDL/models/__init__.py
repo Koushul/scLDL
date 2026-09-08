@@ -1,4 +1,5 @@
 from scLDL.models.concentration import ConcentrationLE
+from scLDL.models.concentration_state import StateConcentrationLE
 from scLDL.models.hybrid import HybridLEVI
 from scLDL.models.improved_levi import ImprovedLEVI
 from scLDL.models.levi import LEVI
@@ -9,6 +10,7 @@ ANNOTATION_MODELS = {
     "mlp": MLPBaseline,
     "lible": LIBLE,
     "concentration": ConcentrationLE,
+    "state_concentration": StateConcentrationLE,
     "hybrid": HybridLEVI,
 }
 
@@ -23,6 +25,7 @@ __all__ = [
     "LEVI",
     "ImprovedLEVI",
     "ConcentrationLE",
+    "StateConcentrationLE",
     "HybridLEVI",
     "ANNOTATION_MODELS",
     "ENHANCEMENT_MODELS",
