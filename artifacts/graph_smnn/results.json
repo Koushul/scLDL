@@ -1,0 +1,450 @@
+[
+  {
+    "accuracy": 1.0,
+    "macro_f1": 0.9999999999994353,
+    "rare_label": "type_3",
+    "rare_f1": 0.9999999999993572,
+    "config": "baseline",
+    "last_correct": "none",
+    "last_graph_refine": "off",
+    "last_supervised_mnn": false,
+    "mean_entropy": 0.1576125585202168,
+    "mean_p1": 0.9720349311828613,
+    "setting": "holdout"
+  },
+  {
+    "accuracy": 1.0,
+    "macro_f1": 0.9999999999994353,
+    "rare_label": "type_3",
+    "rare_f1": 0.9999999999993572,
+    "config": "graph",
+    "last_correct": "none",
+    "last_graph_refine": "on",
+    "last_supervised_mnn": false,
+    "mean_entropy": 0.18844323802125332,
+    "mean_p1": 0.9593489766120911,
+    "setting": "holdout"
+  },
+  {
+    "accuracy": 1.0,
+    "macro_f1": 0.9999999999994353,
+    "rare_label": "type_3",
+    "rare_f1": 0.9999999999993572,
+    "config": "smnn",
+    "last_correct": "none",
+    "last_graph_refine": "off",
+    "last_supervised_mnn": false,
+    "mean_entropy": 0.1576125585202168,
+    "mean_p1": 0.9720349311828613,
+    "setting": "holdout"
+  },
+  {
+    "accuracy": 1.0,
+    "macro_f1": 0.9999999999994353,
+    "rare_label": "type_3",
+    "rare_f1": 0.9999999999993572,
+    "config": "both",
+    "last_correct": "none",
+    "last_graph_refine": "on",
+    "last_supervised_mnn": false,
+    "mean_entropy": 0.18844323802125332,
+    "mean_p1": 0.9593489766120911,
+    "setting": "holdout"
+  },
+  {
+    "accuracy": 1.0,
+    "macro_f1": 0.9999999999994353,
+    "rare_label": "type_3",
+    "rare_f1": 0.9999999999993572,
+    "config": "baseline",
+    "last_correct": "mnn",
+    "last_graph_refine": "off",
+    "last_supervised_mnn": false,
+    "mean_entropy": 0.12445206721022409,
+    "mean_p1": 0.9723089933395386,
+    "setting": "global_shift"
+  },
+  {
+    "accuracy": 1.0,
+    "macro_f1": 0.9999999999994353,
+    "rare_label": "type_3",
+    "rare_f1": 0.9999999999993572,
+    "config": "graph",
+    "last_correct": "mnn",
+    "last_graph_refine": "on",
+    "last_supervised_mnn": false,
+    "mean_entropy": 0.13731504078703996,
+    "mean_p1": 0.9614353775978088,
+    "setting": "global_shift"
+  },
+  {
+    "accuracy": 1.0,
+    "macro_f1": 0.9999999999994353,
+    "rare_label": "type_3",
+    "rare_f1": 0.9999999999993572,
+    "config": "smnn",
+    "last_correct": "mnn",
+    "last_graph_refine": "off",
+    "last_supervised_mnn": true,
+    "mean_entropy": 0.12496785765967086,
+    "mean_p1": 0.9723283052444458,
+    "setting": "global_shift"
+  },
+  {
+    "accuracy": 1.0,
+    "macro_f1": 0.9999999999994353,
+    "rare_label": "type_3",
+    "rare_f1": 0.9999999999993572,
+    "config": "both",
+    "last_correct": "mnn",
+    "last_graph_refine": "on",
+    "last_supervised_mnn": true,
+    "mean_entropy": 0.13786430410894188,
+    "mean_p1": 0.96148282289505,
+    "setting": "global_shift"
+  },
+  {
+    "accuracy": 1.0,
+    "macro_f1": 0.9999999999994353,
+    "rare_label": "type_3",
+    "rare_f1": 0.9999999999993572,
+    "config": "baseline",
+    "last_correct": "mnn",
+    "last_graph_refine": "off",
+    "last_supervised_mnn": false,
+    "mean_entropy": 0.12521980470271812,
+    "mean_p1": 0.9722241163253784,
+    "setting": "rare_type_shift"
+  },
+  {
+    "accuracy": 1.0,
+    "macro_f1": 0.9999999999994353,
+    "rare_label": "type_3",
+    "rare_f1": 0.9999999999993572,
+    "config": "graph",
+    "last_correct": "mnn",
+    "last_graph_refine": "on",
+    "last_supervised_mnn": false,
+    "mean_entropy": 0.13806247350246317,
+    "mean_p1": 0.9613669514656067,
+    "setting": "rare_type_shift"
+  },
+  {
+    "accuracy": 1.0,
+    "macro_f1": 0.9999999999994353,
+    "rare_label": "type_3",
+    "rare_f1": 0.9999999999993572,
+    "config": "smnn",
+    "last_correct": "mnn",
+    "last_graph_refine": "off",
+    "last_supervised_mnn": true,
+    "mean_entropy": 0.12500130437315018,
+    "mean_p1": 0.9723116159439087,
+    "setting": "rare_type_shift"
+  },
+  {
+    "accuracy": 1.0,
+    "macro_f1": 0.9999999999994353,
+    "rare_label": "type_3",
+    "rare_f1": 0.9999999999993572,
+    "config": "both",
+    "last_correct": "mnn",
+    "last_graph_refine": "on",
+    "last_supervised_mnn": true,
+    "mean_entropy": 0.1378787720210253,
+    "mean_p1": 0.9614735841751099,
+    "setting": "rare_type_shift"
+  },
+  {
+    "accuracy": 0.7053571428571429,
+    "macro_f1": 0.7042016806717583,
+    "rare_label": "type_0",
+    "rare_f1": 0.7226890756297417,
+    "config": "baseline",
+    "last_correct": "none",
+    "last_graph_refine": "off",
+    "last_supervised_mnn": false,
+    "mean_entropy": 0.2592255282566713,
+    "mean_p1": 0.9058418869972229,
+    "spatial": {
+      "mean_same_neighbor_frac": 0.578125,
+      "isolated_frac": 0.008928571428571428,
+      "interior_frac": 0.38392857142857145
+    },
+    "setting": "spatial_speckle"
+  },
+  {
+    "accuracy": 0.7053571428571429,
+    "macro_f1": 0.7042016806717583,
+    "rare_label": "type_0",
+    "rare_f1": 0.7226890756297417,
+    "config": "graph",
+    "last_correct": "none",
+    "last_graph_refine": "on",
+    "last_supervised_mnn": false,
+    "mean_entropy": 0.4197873515593364,
+    "mean_p1": 0.8216739296913147,
+    "spatial": {
+      "mean_same_neighbor_frac": 0.5758928656578064,
+      "isolated_frac": 0.008928571428571428,
+      "interior_frac": 0.375
+    },
+    "setting": "spatial_speckle"
+  },
+  {
+    "accuracy": 0.7053571428571429,
+    "macro_f1": 0.7042016806717583,
+    "rare_label": "type_0",
+    "rare_f1": 0.7226890756297417,
+    "config": "smnn",
+    "last_correct": "none",
+    "last_graph_refine": "off",
+    "last_supervised_mnn": false,
+    "mean_entropy": 0.2592255282566713,
+    "mean_p1": 0.9058418869972229,
+    "spatial": {
+      "mean_same_neighbor_frac": 0.578125,
+      "isolated_frac": 0.008928571428571428,
+      "interior_frac": 0.38392857142857145
+    },
+    "setting": "spatial_speckle"
+  },
+  {
+    "accuracy": 0.7053571428571429,
+    "macro_f1": 0.7042016806717583,
+    "rare_label": "type_0",
+    "rare_f1": 0.7226890756297417,
+    "config": "both",
+    "last_correct": "none",
+    "last_graph_refine": "on",
+    "last_supervised_mnn": false,
+    "mean_entropy": 0.4197873515593364,
+    "mean_p1": 0.8216739296913147,
+    "spatial": {
+      "mean_same_neighbor_frac": 0.5758928656578064,
+      "isolated_frac": 0.008928571428571428,
+      "interior_frac": 0.375
+    },
+    "setting": "spatial_speckle"
+  },
+  {
+    "accuracy": 0.8204081632653061,
+    "macro_f1": 0.6423912146925624,
+    "rare_label": "CD4+/CD45RA+/CD25- Naive T",
+    "rare_f1": 0.0,
+    "config": "baseline",
+    "last_correct": "mnn",
+    "last_graph_refine": "off",
+    "last_supervised_mnn": false,
+    "mean_entropy": 0.6640551173499273,
+    "mean_p1": 0.7933238744735718,
+    "setting": "pbmc68k_holdout"
+  },
+  {
+    "accuracy": 0.8040816326530612,
+    "macro_f1": 0.6207051345329814,
+    "rare_label": "CD4+/CD45RA+/CD25- Naive T",
+    "rare_f1": 0.0,
+    "config": "graph",
+    "last_correct": "mnn",
+    "last_graph_refine": "on",
+    "last_supervised_mnn": false,
+    "mean_entropy": 0.7030798854465509,
+    "mean_p1": 0.7723544836044312,
+    "setting": "pbmc68k_holdout"
+  },
+  {
+    "accuracy": 0.7551020408163265,
+    "macro_f1": 0.5157474678276923,
+    "rare_label": "CD4+/CD45RA+/CD25- Naive T",
+    "rare_f1": 0.0,
+    "config": "smnn",
+    "last_correct": "mnn",
+    "last_graph_refine": "off",
+    "last_supervised_mnn": true,
+    "mean_entropy": 0.5732280079131258,
+    "mean_p1": 0.8452658653259277,
+    "setting": "pbmc68k_holdout"
+  },
+  {
+    "accuracy": 0.7428571428571429,
+    "macro_f1": 0.4740985743096286,
+    "rare_label": "CD4+/CD45RA+/CD25- Naive T",
+    "rare_f1": 0.0,
+    "config": "both",
+    "last_correct": "mnn",
+    "last_graph_refine": "on",
+    "last_supervised_mnn": true,
+    "mean_entropy": 0.5855473777521688,
+    "mean_p1": 0.8349146246910095,
+    "setting": "pbmc68k_holdout"
+  },
+  {
+    "accuracy": 0.8204081632653061,
+    "macro_f1": 0.6423912146925624,
+    "rare_label": "CD4+/CD45RA+/CD25- Naive T",
+    "rare_f1": 0.0,
+    "config": "baseline",
+    "last_correct": "mnn",
+    "last_graph_refine": "off",
+    "last_supervised_mnn": false,
+    "mean_entropy": 0.6640551214554056,
+    "mean_p1": 0.7933238744735718,
+    "setting": "pbmc68k_shift"
+  },
+  {
+    "accuracy": 0.8040816326530612,
+    "macro_f1": 0.6207051345329814,
+    "rare_label": "CD4+/CD45RA+/CD25- Naive T",
+    "rare_f1": 0.0,
+    "config": "graph",
+    "last_correct": "mnn",
+    "last_graph_refine": "on",
+    "last_supervised_mnn": false,
+    "mean_entropy": 0.7030798868100546,
+    "mean_p1": 0.7723544836044312,
+    "setting": "pbmc68k_shift"
+  },
+  {
+    "accuracy": 0.7551020408163265,
+    "macro_f1": 0.5157474678276923,
+    "rare_label": "CD4+/CD45RA+/CD25- Naive T",
+    "rare_f1": 0.0,
+    "config": "smnn",
+    "last_correct": "mnn",
+    "last_graph_refine": "off",
+    "last_supervised_mnn": true,
+    "mean_entropy": 0.5732280077207169,
+    "mean_p1": 0.8452658653259277,
+    "setting": "pbmc68k_shift"
+  },
+  {
+    "accuracy": 0.7428571428571429,
+    "macro_f1": 0.4740985743096286,
+    "rare_label": "CD4+/CD45RA+/CD25- Naive T",
+    "rare_f1": 0.0,
+    "config": "both",
+    "last_correct": "mnn",
+    "last_graph_refine": "on",
+    "last_supervised_mnn": true,
+    "mean_entropy": 0.5855473773736258,
+    "mean_p1": 0.8349146246910095,
+    "setting": "pbmc68k_shift"
+  },
+  {
+    "setting": "slideseqv2_rctd",
+    "config": "baseline",
+    "n_ref": 5477,
+    "n_query": 3500,
+    "last_correct": "mnn",
+    "last_graph_refine": "off",
+    "last_supervised_mnn": false,
+    "last_spatial": "on",
+    "mean_entropy": 0.4548838773536041,
+    "mean_p1": 0.873749852180481,
+    "spatial": {
+      "mean_same_neighbor_frac": 0.4612142741680145,
+      "isolated_frac": 0.07657142857142857,
+      "interior_frac": 0.23742857142857143
+    },
+    "rctd_all": {
+      "accuracy": 0.2797142857142857,
+      "macro_f1": 0.1989437273979869,
+      "rare_label": "Other_neuron",
+      "rare_f1": 0.0
+    },
+    "rctd_singlets": {
+      "accuracy": 0.46218487394957986,
+      "macro_f1": 0.25054312255804173,
+      "rare_label": "Mural",
+      "rare_f1": 0.0
+    }
+  },
+  {
+    "setting": "slideseqv2_rctd",
+    "config": "graph",
+    "n_ref": 5477,
+    "n_query": 3500,
+    "last_correct": "mnn",
+    "last_graph_refine": "on",
+    "last_supervised_mnn": false,
+    "last_spatial": "on",
+    "mean_entropy": 1.12912668773932,
+    "mean_p1": 0.679054319858551,
+    "spatial": {
+      "mean_same_neighbor_frac": 0.6125357151031494,
+      "isolated_frac": 0.024857142857142855,
+      "interior_frac": 0.42457142857142854
+    },
+    "rctd_all": {
+      "accuracy": 0.306,
+      "macro_f1": 0.2062939183466036,
+      "rare_label": "Other_neuron",
+      "rare_f1": 0.0
+    },
+    "rctd_singlets": {
+      "accuracy": 0.5088702147525677,
+      "macro_f1": 0.2545046966970135,
+      "rare_label": "Mural",
+      "rare_f1": 0.0
+    }
+  },
+  {
+    "setting": "slideseqv2_rctd",
+    "config": "smnn",
+    "n_ref": 5477,
+    "n_query": 3500,
+    "last_correct": "mnn",
+    "last_graph_refine": "off",
+    "last_supervised_mnn": true,
+    "last_spatial": "on",
+    "mean_entropy": 0.4046810850312149,
+    "mean_p1": 0.8882376551628113,
+    "spatial": {
+      "mean_same_neighbor_frac": 0.45953571796417236,
+      "isolated_frac": 0.08542857142857142,
+      "interior_frac": 0.23857142857142857
+    },
+    "rctd_all": {
+      "accuracy": 0.2662857142857143,
+      "macro_f1": 0.1976639119950972,
+      "rare_label": "Other_neuron",
+      "rare_f1": 0.0
+    },
+    "rctd_singlets": {
+      "accuracy": 0.4425770308123249,
+      "macro_f1": 0.24392938736026398,
+      "rare_label": "Mural",
+      "rare_f1": 0.0
+    }
+  },
+  {
+    "setting": "slideseqv2_rctd",
+    "config": "both",
+    "n_ref": 5477,
+    "n_query": 3500,
+    "last_correct": "mnn",
+    "last_graph_refine": "on",
+    "last_supervised_mnn": true,
+    "last_spatial": "on",
+    "mean_entropy": 0.949305140518963,
+    "mean_p1": 0.7423238158226013,
+    "spatial": {
+      "mean_same_neighbor_frac": 0.6253928542137146,
+      "isolated_frac": 0.029142857142857144,
+      "interior_frac": 0.4534285714285714
+    },
+    "rctd_all": {
+      "accuracy": 0.27914285714285714,
+      "macro_f1": 0.1930753172808216,
+      "rare_label": "Other_neuron",
+      "rare_f1": 0.0
+    },
+    "rctd_singlets": {
+      "accuracy": 0.4677871148459384,
+      "macro_f1": 0.23724910240998615,
+      "rare_label": "Mural",
+      "rare_f1": 0.0
+    }
+  }
+]

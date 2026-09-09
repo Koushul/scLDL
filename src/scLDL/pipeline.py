@@ -4,11 +4,12 @@ import numpy as np
 
 from scLDL.data import align_matrix, labels_to_onehot, log1p_normalize, looks_like_counts, preprocess_reference, to_dense
 from scLDL.device import resolve_device
-from scLDL.embedding import ReferenceEmbedding
+from scLDL.embedding import ReferenceEmbedding, mnn_map_supervised
 from scLDL.interpret import (
     adaptive_blend,
     dissonance,
     entropy,
+    graph_refine,
     illegal_mass,
     marker_spearman,
     project_lineage,
@@ -30,12 +31,13 @@ class AnnotationPipeline:
     ``task="state"`` uses marker programs, probabilistic neighbors, and a
     lineage prior so mixed / transitional cells keep mass on nearby states.
 
-    Query cells are mapped into the reference PCA space (optional MNN
-    correction) so annotation does not require sharing a technical batch.
+        Query cells are mapped into the reference PCA space (optional MNN
+        correction, with a type-restricted second pass) so annotation does not
+        require sharing a technical batch.
 
-    When the query has coordinates, ``spatial="auto"`` refines the simplex on
-    a bilateral spatial graph so isolated speckles follow nearby similar spots
-    without washing out layer interiors.
+        After blending, ``graph_refine="auto"`` smooths the simplex on the query
+        neighborhood graph whenever the query has coordinates. ``supervised_mnn``
+        stays off: a type-restricted second MNN pass can kidnap similar subtypes.
     """
 
     def __init__(
@@ -55,6 +57,8 @@ class AnnotationPipeline:
         lineage_edges=None,
         query_correct: str = "auto",
         spatial: str = "auto",
+        graph_refine: str = "auto",
+        supervised_mnn: str = "off",
         **model_kwargs,
     ):
         if model not in ANNOTATION_MODELS:
@@ -63,6 +67,10 @@ class AnnotationPipeline:
             raise ValueError("task must be 'type' or 'state'")
         if spatial not in {"auto", "on", "off"}:
             raise ValueError("spatial must be 'auto', 'on', or 'off'")
+        if graph_refine not in {"auto", "on", "off"}:
+            raise ValueError("graph_refine must be 'auto', 'on', or 'off'")
+        if supervised_mnn not in {"auto", "on", "off"}:
+            raise ValueError("supervised_mnn must be 'auto', 'on', or 'off'")
         self.model_name = model
         self.task = task
         self.n_top_genes = n_top_genes
@@ -78,6 +86,8 @@ class AnnotationPipeline:
         self.lineage_edges = lineage_edges
         self.query_correct = query_correct
         self.spatial = spatial
+        self.graph_refine = graph_refine
+        self.supervised_mnn = supervised_mnn
         self.model_kwargs = model_kwargs
         self.estimator_ = None
         self.embed_ = None
@@ -88,6 +98,8 @@ class AnnotationPipeline:
         self.uses_embedding_ = model in {"scldl", "interpretable", "state_concentration"}
         self._ref_had_batches = False
         self.last_spatial_ = "off"
+        self.last_graph_refine_ = "off"
+        self.last_supervised_mnn_ = False
 
     def _is_scldl(self):
         return self.model_name in {"scldl", "interpretable"}
@@ -198,16 +210,64 @@ class AnnotationPipeline:
         self._check_fitted()
         x = self._prepare_query(adata)
         parts = self._predict_parts(x)
-        dist = self._apply_spatial(parts["blended"], adata, parts["x_model"])
+        dist = self._apply_graph(parts, adata)
+        dist = self._apply_spatial(dist, adata, parts["x_model"])
         return parts, dist
+
+    def _use_supervised_mnn(self, correct):
+        if self.supervised_mnn == "off" or not self.uses_embedding_ or self.Y_ref_ is None:
+            return False
+        return correct == "mnn"
+
+    def _use_graph_refine(self, adata=None):
+        if self.graph_refine == "off":
+            return False
+        if self.graph_refine == "on":
+            return True
+        return adata is not None and try_spatial_xy(adata) is not None
 
     def _model_inputs(self, x_log):
         if self.embed_ is None:
+            self.last_supervised_mnn_ = False
             return x_log
         correct = self.query_correct
         if correct == "auto" and self._ref_had_batches:
             correct = "mnn"
-        return self.embed_.transform(x_log, correct=correct)
+        z = self.embed_.transform(x_log, correct=correct)
+        if self._use_supervised_mnn(getattr(self.embed_, "last_correct_", "none")):
+            knn_p = query_label_transfer(z, self.embed_.ref_z_, self.Y_ref_, n_neighbors=self.n_neighbors)
+            z = mnn_map_supervised(
+                z,
+                self.embed_.ref_z_,
+                knn_p.argmax(axis=1),
+                self.Y_ref_.argmax(axis=1),
+                n_neighbors=self.n_neighbors,
+            )
+            self.last_supervised_mnn_ = True
+        else:
+            self.last_supervised_mnn_ = False
+        return z
+
+    def _apply_graph(self, parts, adata):
+        dist = parts["blended"]
+        if not self._use_graph_refine(adata):
+            self.last_graph_refine_ = "off"
+            return dist
+        xy = try_spatial_xy(adata)
+        n_iter = 2 if self.task == "type" else 3
+        mix = 0.55 if self.task == "type" else 0.65
+        dist = graph_refine(
+            dist,
+            parts["x_model"],
+            vacuity=parts["vacuity"],
+            xy=xy,
+            n_neighbors=min(15, self.n_neighbors),
+            n_iter=n_iter,
+            mix=mix,
+        )
+        parts["blended"] = dist
+        self.last_graph_refine_ = "on"
+        return dist
 
     def _predict_parts(self, x_log):
         x_model = self._model_inputs(x_log)

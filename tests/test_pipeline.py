@@ -67,6 +67,9 @@ def test_looks_like_counts_uses_global_max():
     assert looks_like_counts(x)
     logx = np.log1p(np.abs(np.random.default_rng(0).normal(size=(40, 4)).astype(np.float32)))
     assert not looks_like_counts(logx)
+    scaled = logx - 1.5
+    scaled[0, 0] = 25.0
+    assert not looks_like_counts(scaled)
 
 
 def test_log1p_normalize_matches_scanpy():

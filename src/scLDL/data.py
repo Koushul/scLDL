@@ -27,6 +27,8 @@ def looks_like_counts(x) -> bool:
         sample = np.asarray(arr[: min(32, n)], dtype=np.float64)
     if sample.size == 0:
         return False
+    if float(np.nanmin(sample)) < -0.05:
+        return False
     if mx > 20:
         return True
     frac_int = np.mean(np.abs(sample - np.round(sample)) < 1e-6)

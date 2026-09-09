@@ -59,9 +59,27 @@ def test_pipeline_spatial_auto_uses_coordinates():
     pipe.fit(ad, label_key="cell_type")
     out = pipe.annotate(ad, copy=True)
     assert pipe.last_spatial_ == "on"
+    assert pipe.last_graph_refine_ == "on"
     assert "X_scldl_expr" in out.obsm
     assert "scldl_pred_expr" in out.obs
     pipe.spatial = "off"
     labeled = pipe.annotate(ad, copy=True)
     assert pipe.last_spatial_ == "off"
+    assert pipe.last_graph_refine_ == "on"
     assert "scldl_pred_expr" not in labeled.obs
+
+
+def test_pipeline_graph_refine_auto_skips_without_coordinates():
+    rng = np.random.default_rng(3)
+    y = np.array([0] * 40 + [1] * 40)
+    x = rng.normal(scale=0.2, size=(80, 12)).astype(np.float32)
+    x[:, 0] += y * 3
+    ad = AnnData(x)
+    ad.obs["cell_type"] = [f"type_{i}" for i in y]
+    ad.var_names = [f"g{i}" for i in range(12)]
+    ad.obs_names = [f"c{i}" for i in range(80)]
+    pipe = AnnotationPipeline(model="scldl", n_top_genes=20, n_pcs=6, n_hidden=32, epochs=8, batch_size=16, verbose=False)
+    pipe.fit(ad, label_key="cell_type")
+    pipe.annotate(ad, copy=True)
+    assert pipe.last_graph_refine_ == "off"
+    assert pipe.last_spatial_ == "off"

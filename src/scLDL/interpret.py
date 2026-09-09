@@ -81,6 +81,56 @@ def residual_mass(model_p, marker_p=None, knn_p=None):
     return (model_p - support).astype(np.float32)
 
 
+def graph_refine(p, z, vacuity=None, xy=None, n_neighbors: int = 15, n_iter: int = 2, mix: float = 0.55):
+    """Smooth the simplex on the query kNN graph; confident cells stay put.
+
+    Neighbor edges are expression affinities (and spatial affinities when ``xy``
+    is given). High-vacuity cells contribute less as sources and mix more.
+    """
+    from sklearn.neighbors import NearestNeighbors
+
+    p = row_normalize(p)
+    n = len(p)
+    if n < 4:
+        return p
+    z = np.asarray(z, dtype=np.float64)
+    if xy is not None:
+        xy = np.asarray(xy, dtype=np.float64)
+        k = max(2, min(int(n_neighbors) + 1, n))
+        dist, idx = NearestNeighbors(n_neighbors=k).fit(xy).kneighbors(xy)
+        sigma = np.maximum(dist[:, -1], 1e-8)
+        w = np.exp(-(dist * dist) / np.maximum(sigma[:, None] ** 2, 1e-12))
+        w[:, 0] = 0.0
+        dz = np.sqrt(((z[idx] - z[:, None, :]) ** 2).sum(axis=2))
+        tau = np.maximum(np.median(dz[:, 1:], axis=1, keepdims=True), 1e-8)
+        w = w * (0.35 + 0.65 * np.exp(-(dz * dz) / np.maximum(tau ** 2, 1e-12)))
+        w[:, 0] = 0.0
+    else:
+        k = max(2, min(int(n_neighbors) + 1, n))
+        dist, idx = NearestNeighbors(n_neighbors=k).fit(z).kneighbors(z)
+        sigma = np.maximum(dist[:, -1], 1e-8)
+        w = np.exp(-(dist * dist) / np.maximum(sigma[:, None] ** 2, 1e-12))
+        w[:, 0] = 0.0
+    conf = p.max(axis=1)
+    labels = p.argmax(axis=1)
+    disagree = (labels[idx[:, 1:]] != labels[:, None]).mean(axis=1) if k > 1 else np.zeros(n)
+    if vacuity is not None:
+        vac = np.clip(np.asarray(vacuity, dtype=np.float64).ravel(), 0.0, 1.0)
+        source = np.clip(1.0 - vac, 0.05, 1.0)
+        lam = float(mix) * np.clip(0.15 * np.maximum(1.0 - conf, vac) + 0.85 * disagree, 0.0, 0.85)
+    else:
+        source = np.clip(conf, 0.05, 1.0)
+        lam = float(mix) * np.clip(0.15 * (1.0 - conf) + 0.85 * disagree, 0.0, 0.85)
+    w = w * source[idx]
+    w = w / np.clip(w.sum(axis=1, keepdims=True), 1e-12, None)
+    out = np.asarray(p, dtype=np.float64)
+    for _ in range(max(1, int(n_iter))):
+        neigh = (w[..., None] * out[idx]).sum(axis=1)
+        out = (1.0 - lam)[:, None] * out + lam[:, None] * neigh
+        out = out / np.clip(out.sum(axis=1, keepdims=True), 1e-12, None)
+    return out.astype(np.float32)
+
+
 def adaptive_blend(model_p, knn_p=None, marker_p=None, task: str = "type", batch_corrected: bool = False):
     """Blend sources; high-confidence cells stay peaked (cell-type accuracy)."""
     model_p = row_normalize(model_p)
