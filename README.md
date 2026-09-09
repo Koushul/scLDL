@@ -36,7 +36,7 @@ print(pipe.evaluate(query, label_key="cell_type"))
 
 | Name | Class | Role |
 |---|---|---|
-| `scldl` | `InterpretableLE` | Default scLDL: reference PCA, optional MNN, type/state LDL; spatial refine when coordinates exist |
+| `scldl` | `InterpretableLE` | Default scLDL: reference PCA, optional MNN, type/state LDL; spatial queries also get neighborhood graph refine |
 | `interpretable` | `InterpretableLE` | Alias for `scldl` |
 | `mlp` | `MLPBaseline` | Softmax classifier baseline |
 | `concentration` | `ConcentrationLE` | Dirichlet / evidential head (gene space) |

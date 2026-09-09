@@ -36,9 +36,8 @@ class AnnotationPipeline:
         require sharing a technical batch.
 
         After blending, ``graph_refine="auto"`` smooths the simplex on the query
-        neighborhood graph when coordinates are present. ``supervised_mnn="on"``
-        rematches MNN partners within provisional types (off by default; it can
-        kidnap similar subtypes).
+        neighborhood graph whenever the query has coordinates. ``supervised_mnn``
+        stays off: a type-restricted second MNN pass can kidnap similar subtypes.
     """
 
     def __init__(
@@ -225,8 +224,6 @@ class AnnotationPipeline:
             return False
         if self.graph_refine == "on":
             return True
-        if self.spatial == "off":
-            return False
         return adata is not None and try_spatial_xy(adata) is not None
 
     def _model_inputs(self, x_log):
@@ -256,7 +253,7 @@ class AnnotationPipeline:
         if not self._use_graph_refine(adata):
             self.last_graph_refine_ = "off"
             return dist
-        xy = try_spatial_xy(adata) if self.spatial != "off" else None
+        xy = try_spatial_xy(adata)
         n_iter = 2 if self.task == "type" else 3
         mix = 0.55 if self.task == "type" else 0.65
         dist = graph_refine(
