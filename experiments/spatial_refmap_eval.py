@@ -14,6 +14,8 @@ from sklearn.metrics import accuracy_score, balanced_accuracy_score, confusion_m
 
 from scLDL.metrics import classification_metrics
 from scLDL.pipeline import AnnotationPipeline
+from scLDL.spatial import spatial_coords, try_spatial_xy
+from scLDL.spatial_smooth import spatial_refine, spatial_stats
 from scLDL.spatial import (
     collapse_dropviz,
     map_rctd,
@@ -195,7 +197,7 @@ def _run_dataset(name, ref, query, args):
 
     markers = marker_subset(ref.obs["cell_type"].unique(), ref.var_names)
     pipe = AnnotationPipeline(
-        model="interpretable",
+        model="scldl",
         task="type",
         n_top_genes=args.n_top_genes,
         n_pcs=args.n_pcs,
@@ -206,32 +208,44 @@ def _run_dataset(name, ref, query, args):
         verbose=True,
         markers=markers or None,
         query_correct="auto",
+        spatial="auto",
     )
     batch_key = "batch" if "batch" in ref.obs and ref.obs["batch"].nunique() > 1 else None
     pipe.fit(ref, label_key="cell_type", batch_key=batch_key)
     query = pipe.annotate(query, copy=True)
     correct = getattr(pipe.embed_, "last_correct_", None)
+    xy = try_spatial_xy(query)
 
-    pred_counts = query.obs["scldl_pred"].value_counts().to_dict()
+    pred_sp = query.obs["scldl_pred"].astype(str)
+    pred_expr = query.obs["scldl_pred_expr"].astype(str) if "scldl_pred_expr" in query.obs else pred_sp
+    pred_counts = pred_sp.value_counts().to_dict()
     metrics = {
         "dataset": name,
+        "model": "scldl",
         "n_ref": int(ref.n_obs),
         "n_query": int(query.n_obs),
         "n_types": int(len(pipe.classes_)),
         "types": list(map(str, pipe.classes_)),
         "query_correct": correct,
+        "spatial": getattr(pipe, "last_spatial_", None),
         "pred_counts": {str(k): int(v) for k, v in pred_counts.items()},
+        "changed_frac": float((pred_sp.to_numpy() != pred_expr.to_numpy()).mean()),
         "mean_entropy": float(query.obs["scldl_entropy"].mean()),
         "mean_dissonance": float(query.obs["scldl_dissonance"].mean()),
         "mean_p1": float(query.obs["scldl_p1"].mean()),
         "marker_check": _marker_check(query, pipe.classes_),
     }
+    if xy is not None:
+        metrics["spatial_expr"] = spatial_stats(pred_expr, xy)
+        metrics["spatial_scldl"] = spatial_stats(pred_sp, xy)
 
     if "rctd_type" in query.obs:
         singlets = query.obs["rctd_class"].astype(str) == "singlet"
-        metrics["rctd_all"] = _agreement(query.obs["rctd_type"], query.obs["scldl_pred"])
-        metrics["rctd_singlets"] = _agreement(
-            query.obs.loc[singlets, "rctd_type"], query.obs.loc[singlets, "scldl_pred"]
+        metrics["rctd_all"] = _agreement(query.obs["rctd_type"], pred_sp)
+        metrics["rctd_singlets"] = _agreement(query.obs.loc[singlets, "rctd_type"], pred_sp.loc[singlets])
+        metrics["rctd_all_expr"] = _agreement(query.obs["rctd_type"], pred_expr)
+        metrics["rctd_singlets_expr"] = _agreement(
+            query.obs.loc[singlets, "rctd_type"], pred_expr.loc[singlets]
         )
         sub = query[singlets & query.obs["rctd_type"].notna()].copy()
         if sub.n_obs > 50:
@@ -240,7 +254,7 @@ def _run_dataset(name, ref, query, args):
                 sub.obs["rctd_type"],
                 sub.obs["scldl_pred"],
                 out_dir / "rctd_confusion_singlets.png",
-                f"{name} RCTD vs scLDL (singlets)",
+                f"{name} RCTD vs spatial scLDL (singlets)",
             )
 
     held = ref_all.obs_names.difference(ref.obs_names)
@@ -251,15 +265,20 @@ def _run_dataset(name, ref, query, args):
             pipe.annotate(hold, copy=True).obs["scldl_pred"].astype(str),
         )
 
-    _spatial_cat(query, "scldl_pred", out_dir / "spatial_pred.png", f"{name} scLDL ({correct})")
+    _spatial_cat(query, "scldl_pred", out_dir / "spatial_pred.png", f"{name} spatial scLDL ({correct})")
+    if "scldl_pred_expr" in query.obs:
+        tmp = query.copy()
+        tmp.obs["scldl_pred"] = pred_expr.to_numpy()
+        _spatial_cat(tmp, "scldl_pred", out_dir / "spatial_pred_expr.png", f"{name} scLDL expression-only")
     _spatial_cont(query, query.obs["scldl_entropy"], out_dir / "spatial_entropy.png", f"{name} entropy")
     _spatial_cont(query, query.obs["scldl_dissonance"], out_dir / "spatial_dissonance.png", f"{name} dissonance")
     if "leiden" in query.obs:
         _spatial_cat(query, "leiden", out_dir / "spatial_leiden.png", f"{name} leiden")
 
-    query.obs[["scldl_pred", "scldl_entropy", "scldl_dissonance", "scldl_pair", "scldl_p1", "scldl_p2"]].to_csv(
-        out_dir / "spot_annotations.csv"
-    )
+    cols = ["scldl_pred", "scldl_entropy", "scldl_dissonance", "scldl_pair", "scldl_p1", "scldl_p2"]
+    if "scldl_pred_expr" in query.obs:
+        cols = ["scldl_pred_expr"] + cols
+    query.obs[cols].to_csv(out_dir / "spot_annotations.csv")
     (out_dir / "metrics.json").write_text(json.dumps(metrics, indent=2, default=str), encoding="utf-8")
     print(json.dumps(metrics, indent=2, default=str))
     return metrics

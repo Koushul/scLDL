@@ -18,6 +18,8 @@ from scLDL.interpret import (
 from scLDL.metrics import classification_metrics, distribution_metrics
 from scLDL.models import ANNOTATION_MODELS
 from scLDL.neighbors import query_label_transfer
+from scLDL.spatial import try_spatial_xy
+from scLDL.spatial_smooth import spatial_refine
 from scLDL.state_targets import blend_targets, knn_smooth_labels, marker_targets
 
 
@@ -30,11 +32,15 @@ class AnnotationPipeline:
 
     Query cells are mapped into the reference PCA space (optional MNN
     correction) so annotation does not require sharing a technical batch.
+
+    When the query has coordinates, ``spatial="auto"`` refines the simplex on
+    a bilateral spatial graph so isolated speckles follow nearby similar spots
+    without washing out layer interiors.
     """
 
     def __init__(
         self,
-        model: str = "interpretable",
+        model: str = "scldl",
         task: str = "type",
         n_top_genes: int = 2000,
         n_pcs: int = 50,
@@ -48,12 +54,15 @@ class AnnotationPipeline:
         markers: dict | None = None,
         lineage_edges=None,
         query_correct: str = "auto",
+        spatial: str = "auto",
         **model_kwargs,
     ):
         if model not in ANNOTATION_MODELS:
             raise ValueError(f"Unknown annotation model {model!r}. Choose from {sorted(ANNOTATION_MODELS)}")
         if task not in {"type", "state"}:
             raise ValueError("task must be 'type' or 'state'")
+        if spatial not in {"auto", "on", "off"}:
+            raise ValueError("spatial must be 'auto', 'on', or 'off'")
         self.model_name = model
         self.task = task
         self.n_top_genes = n_top_genes
@@ -68,6 +77,7 @@ class AnnotationPipeline:
         self.markers = markers
         self.lineage_edges = lineage_edges
         self.query_correct = query_correct
+        self.spatial = spatial
         self.model_kwargs = model_kwargs
         self.estimator_ = None
         self.embed_ = None
@@ -76,8 +86,12 @@ class AnnotationPipeline:
         self.label_key_ = None
         self.log_normalized_ = False
         self.Y_ref_ = None
-        self.uses_embedding_ = model in {"interpretable", "state_concentration"}
+        self.uses_embedding_ = model in {"scldl", "interpretable", "state_concentration"}
         self._ref_had_batches = False
+        self.last_spatial_ = "off"
+
+    def _is_scldl(self):
+        return self.model_name in {"scldl", "interpretable"}
 
     def _marker_matrix(self, expr, gene_names):
         if not self.markers or self.classes_ is None:
@@ -139,7 +153,7 @@ class AnnotationPipeline:
             device=self.device,
             verbose=self.verbose,
         )
-        if self.model_name == "interpretable":
+        if self._is_scldl():
             params.update(
                 n_concepts=0 if concepts is None else concepts.shape[1],
                 lineage_edges=self.lineage_edges if self.task == "state" else None,
@@ -158,7 +172,7 @@ class AnnotationPipeline:
                 params.update(mixup_alpha=0.0, lineage_weight=0.0, manifold_weight=0.0, vacuity_weight=0.0)
         params.update(self.model_kwargs)
         extra_fit = {}
-        if self.model_name == "interpretable":
+        if self._is_scldl():
             extra_fit["concepts"] = concepts
             extra_fit["neighbor_p"] = neighbor_p
         elif self.model_name == "state_concentration":
@@ -196,7 +210,7 @@ class AnnotationPipeline:
     def _predict_parts(self, x_log):
         x_model = self._model_inputs(x_log)
         concepts = self._marker_matrix(x_log, self.var_names_) if self.task == "state" else None
-        if self.model_name == "interpretable":
+        if self._is_scldl():
             model_p, vacuity, _ = self.estimator_.predict_evidence(x_model, concepts=concepts)
         elif hasattr(self.estimator_, "predict_evidence"):
             out = self.estimator_.predict_evidence(x_model)
@@ -227,18 +241,35 @@ class AnnotationPipeline:
             "x_model": x_model,
         }
 
+    def _apply_spatial(self, dist, adata, z):
+        xy = try_spatial_xy(adata)
+        if self.spatial == "off":
+            self.last_spatial_ = "off"
+            return dist
+        if xy is None:
+            if self.spatial == "on":
+                raise KeyError("spatial='on' requires coordinates on the query AnnData")
+            self.last_spatial_ = "off"
+            return dist
+        self.last_spatial_ = "on"
+        k = 8 if self.task == "type" else 12
+        return spatial_refine(dist, xy, z=z, n_neighbors=k, n_iter=6, task=self.task)
+
     def predict_distribution(self, adata):
         self._check_fitted()
         _, x = self._prepare_query(adata)
-        return self._predict_parts(x)["blended"]
+        parts = self._predict_parts(x)
+        return self._apply_spatial(parts["blended"], adata, parts["x_model"])
 
     def annotate(self, adata, obsm_key: str = "X_scldl", obs_key: str = "scldl_pred", copy: bool = False):
         self._check_fitted()
         ad = adata.copy() if copy else adata
         _, x = self._prepare_query(ad)
         parts = self._predict_parts(x)
-        dist = parts["blended"]
+        expr = parts["blended"]
+        dist = self._apply_spatial(expr, ad, parts["x_model"])
         ad.obsm[obsm_key] = dist
+        ad.obsm["X_scldl_expr"] = expr
         ad.obsm["X_scldl_model"] = parts["model"]
         if parts["knn"] is not None:
             ad.obsm["X_scldl_knn"] = parts["knn"]
@@ -246,6 +277,8 @@ class AnnotationPipeline:
             ad.obsm["X_scldl_marker"] = parts["marker"]
             ad.obsm["X_scldl_residual"] = residual_mass(parts["model"], parts["marker"], parts["knn"])
         ad.obs[obs_key] = self.classes_[dist.argmax(axis=1)]
+        if self.last_spatial_ == "on":
+            ad.obs["scldl_pred_expr"] = self.classes_[expr.argmax(axis=1)]
         ad.obs["scldl_uncertainty"] = parts["vacuity"]
         ad.obs["scldl_entropy"] = entropy(dist)
         ad.obs["scldl_dissonance"] = dissonance(dist)
@@ -263,7 +296,7 @@ class AnnotationPipeline:
             raise KeyError(f"{key!r} not found in adata.obs")
         _, x = self._prepare_query(adata)
         parts = self._predict_parts(x)
-        dist = parts["blended"]
+        dist = self._apply_spatial(parts["blended"], adata, parts["x_model"])
         y_true = np.asarray(adata.obs[key].astype(str))
         y_pred = self.classes_[dist.argmax(axis=1)]
         metrics = classification_metrics(y_true, y_pred)

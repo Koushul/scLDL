@@ -12,6 +12,7 @@ ANNOTATION_MODELS = {
     "lible": LIBLE,
     "concentration": ConcentrationLE,
     "state_concentration": StateConcentrationLE,
+    "scldl": InterpretableLE,
     "interpretable": InterpretableLE,
     "hybrid": HybridLEVI,
 }

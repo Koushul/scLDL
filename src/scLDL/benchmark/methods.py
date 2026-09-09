@@ -284,7 +284,7 @@ def build_method(name: str, epochs: int = 40, n_hidden: int = 128, batch_size: i
         return SCLDLMethod("concentration", n_hidden=n_hidden, epochs=epochs, batch_size=batch_size)
     if name == "scldl_interpretable":
         return SCLDLMethod(
-            "interpretable",
+            "scldl",
             n_hidden=n_hidden,
             epochs=epochs,
             batch_size=batch_size,

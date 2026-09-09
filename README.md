@@ -23,7 +23,7 @@ import scanpy as sc
 ref = sc.read_h5ad("reference.h5ad")
 query = sc.read_h5ad("query.h5ad")
 
-pipe = AnnotationPipeline(model="concentration", n_top_genes=2000, epochs=40)
+pipe = AnnotationPipeline(n_top_genes=2000, epochs=40)
 pipe.fit(ref, label_key="cell_type")
 
 query = pipe.annotate(query)
@@ -36,8 +36,11 @@ print(pipe.evaluate(query, label_key="cell_type"))
 
 | Name | Class | Role |
 |---|---|---|
+| `scldl` | `InterpretableLE` | Default scLDL: reference PCA, optional MNN, type/state LDL; spatial refine when coordinates exist |
+| `interpretable` | `InterpretableLE` | Alias for `scldl` |
 | `mlp` | `MLPBaseline` | Softmax classifier baseline |
-| `concentration` | `ConcentrationLE` | Dirichlet / evidential head (default) |
+| `concentration` | `ConcentrationLE` | Dirichlet / evidential head (gene space) |
+| `state_concentration` | `StateConcentrationLE` | State-aware concentration model |
 | `hybrid` | `HybridLEVI` | VAE + evidential head |
 | `lible` | `LIBLE` | Label information bottleneck, `X` only |
 

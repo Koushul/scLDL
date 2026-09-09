@@ -66,6 +66,24 @@ def standardize_gene_names(adata, copy: bool = True):
     return ad
 
 
+def has_spatial(adata):
+    if "spatial" in getattr(adata, "obsm", {}):
+        return True
+    return any(xk in adata.obs and yk in adata.obs for xk, yk in (("xcoord", "ycoord"), ("x", "y"), ("array_col", "array_row")))
+
+
+def spatial_xy(adata):
+    x, y = spatial_coords(adata)
+    return np.column_stack([x, y])
+
+
+def try_spatial_xy(adata):
+    try:
+        return spatial_xy(adata)
+    except (KeyError, ValueError):
+        return None
+
+
 def spatial_coords(adata):
     if "spatial" in adata.obsm:
         xy = np.asarray(adata.obsm["spatial"])[:, :2]
