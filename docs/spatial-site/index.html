@@ -1,0 +1,479 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1"/>
+  <title>Spatial scLDL — Visium HD and Slide-seqV2</title>
+  <style>
+    :root { --bg:#f7f4ee; --ink:#1b1b18; --muted:#5c584f; --card:#fff; --line:#e4ddd0; --accent:#234e70; }
+    * { box-sizing:border-box; }
+    body { margin:0; font-family:Source Serif 4, Iowan Old Style, Georgia, serif; background:var(--bg); color:var(--ink); line-height:1.55; }
+    header { padding:2.4rem 6vw 1rem; max-width:1180px; }
+    h1 { font-size:2.1rem; margin:0 0 .4rem; letter-spacing:-.02em; }
+    .lede { color:var(--muted); font-size:1.12rem; max-width:48rem; }
+    main { padding:0 6vw 4rem; max-width:1180px; }
+    @media (min-width:900px) { .pair { display:grid; grid-template-columns:1fr 1fr; gap:1.2rem; } }
+    figure { margin:0 0 1.2rem; background:var(--card); border:1px solid var(--line); border-radius:16px; padding:1rem; }
+    img { width:100%; height:auto; border-radius:8px; }
+    figcaption { font-size:.92rem; color:var(--muted); margin-top:.7rem; }
+    table { width:100%; border-collapse:collapse; background:var(--card); border-radius:16px; overflow:hidden; margin:0 0 1.2rem; }
+    th, td { text-align:left; padding:.55rem .8rem; border-bottom:1px solid var(--line); font-size:.92rem; }
+    th { font-family:ui-sans-serif, system-ui, sans-serif; font-weight:600; color:var(--muted); }
+    .metrics { display:flex; flex-wrap:wrap; gap:.8rem; margin:1rem 0 1.6rem; }
+    .chip { background:var(--card); border:1px solid var(--line); border-radius:999px; padding:.35rem .85rem; font-family:ui-sans-serif, system-ui, sans-serif; font-size:.86rem; }
+    h2 { margin:2.2rem 0 .6rem; font-size:1.45rem; }
+    a { color:var(--accent); }
+    code { font-size:.88em; }
+    .note { color:var(--muted); max-width:48rem; }
+    .explorer {
+      display:grid; gap:1rem; margin:1.2rem 0 2rem;
+      background:var(--card); border:1px solid var(--line); border-radius:16px; padding:1rem;
+    }
+    @media (min-width:960px) {
+      .explorer { grid-template-columns: minmax(0, 1.45fr) minmax(280px, .9fr); align-items:start; }
+    }
+    .toolbar { display:flex; flex-wrap:wrap; gap:.6rem; align-items:center; margin-bottom:.7rem; font-family:ui-sans-serif, system-ui, sans-serif; font-size:.86rem; }
+    select, button {
+      font: inherit; border:1px solid var(--line); background:#fff; border-radius:8px; padding:.35rem .6rem; color:var(--ink);
+    }
+    button { cursor:pointer; }
+    button.active { background:#1b1b18; color:#fff; border-color:#1b1b18; }
+    .hint { color:var(--muted); }
+    .map-wrap { position:relative; width:100%; background:#f3efe6; border-radius:12px; overflow:hidden; touch-action:none; }
+    canvas.map { display:block; width:100%; height:auto; cursor:crosshair; }
+    canvas.overlay { position:absolute; inset:0; width:100%; height:100%; pointer-events:none; }
+    .panel h3 { margin:0 0 .35rem; font-size:1.05rem; }
+    .meta { font-family:ui-sans-serif, system-ui, sans-serif; font-size:.82rem; color:var(--muted); margin:0 0 .8rem; }
+    .bars { display:flex; flex-direction:column; gap:.28rem; }
+    .bar-row { display:grid; grid-template-columns: 7.5rem minmax(0,1fr) 2.6rem; gap:.4rem; align-items:center; font-family:ui-sans-serif, system-ui, sans-serif; font-size:.75rem; }
+    .bar-row span.name { overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+    .bar-row span.pct { text-align:right; color:var(--muted); font-variant-numeric:tabular-nums; }
+    .track { height:10px; background:#eee8dc; border-radius:99px; overflow:hidden; }
+    .fill { height:100%; border-radius:99px; }
+    .empty { color:var(--muted); font-size:.95rem; }
+  </style>
+</head>
+<body>
+<header>
+  <h1>scLDL, then spatial scLDL when coordinates exist</h1>
+  <p class="lede">
+    Default scLDL is InterpretableLE in type mode: reference PCA, MNN onto a public atlas, peaked simplex.
+    Click any spot to see that cell’s label distribution — the Dirichlet mean <em>p</em> on the type simplex,
+    recovered here from the stored top-two masses. Drag a box to average several cells.
+  </p>
+</header>
+<main>
+  <div class="metrics">
+    <span class="chip">Default model scldl</span>
+    <span class="chip">spatial=auto if coords</span>
+    <span class="chip">Visium isolated 0.29 → 0.056</span>
+    <span class="chip">Slide-seq RCTD singlets 0.53 → 0.59</span>
+  </div>
+
+  <h2>Explore a cell’s label distribution</h2>
+  <p class="note">
+    Each bar is <em>p<sub>k</sub> = α<sub>k</sub>/S</em> for type <em>k</em>. Saved annotations keep the top two masses
+    <em>p</em><sub>(1)</sub>, <em>p</em><sub>(2)</sub> and pool the rest as <em>other</em>. A peaked bar is a confident type;
+    two comparable bars are a mixture or boundary; leftover <em>other</em> is mass on the remaining atlas types.
+  </p>
+  <div class="explorer">
+    <div>
+      <div class="toolbar">
+        <label>Dataset
+          <select id="dataset">
+            <option value="visiumhd">Visium HD mouse brain</option>
+            <option value="slideseqv2">Slide-seqV2 hippocampus</option>
+          </select>
+        </label>
+        <button type="button" id="mode-click" class="active">Click cell</button>
+        <button type="button" id="mode-box">Box select</button>
+        <button type="button" id="clear">Clear</button>
+        <span class="hint" id="status">Loading spots…</span>
+      </div>
+      <div class="map-wrap" id="map-wrap">
+        <canvas class="map" id="map"></canvas>
+        <canvas class="overlay" id="overlay"></canvas>
+      </div>
+    </div>
+    <div class="panel">
+      <h3 id="panel-title">No cell selected</h3>
+      <p class="meta" id="panel-meta">Click a spot on the map.</p>
+      <div class="bars" id="bars"></div>
+    </div>
+  </div>
+
+  <h2>What the expression-only maps got wrong</h2>
+  <p class="note">
+    On Visium HD, only 25% of a spot’s 8 spatial neighbors shared its scLDL type; 29% of bins were
+    fully isolated. DG and astrocytes were coherent; cortical layers, microglia, and subiculum were salt-and-pepper.
+    Entropy was already doing the right thing (0.88 at boundaries vs 0.43 in interiors).
+    On Slide-seqV2, RCTD singlet accuracy was 97% in spatial interiors and 18% on isolated beads —
+    almost all of the disagreement with RCTD lived in speckles, not in CA1/CA3/DG bands.
+  </p>
+
+  <h2>Visium HD — expression scLDL vs spatial scLDL</h2>
+  <div class="pair">
+    <figure>
+      <img src="visium_pred_expr.png" alt="Visium HD expression-only scLDL"/>
+      <figcaption>Expression-only. Cortex layers and microglia are speckled; hippocampus is already a CA/DG hook.</figcaption>
+    </figure>
+    <figure>
+      <img src="visium_pred.png" alt="Visium HD spatial scLDL"/>
+      <figcaption>Spatial scLDL. Isolated bins adopt the local majority; layer interiors are copied from expression scLDL.</figcaption>
+    </figure>
+  </div>
+  <table>
+    <thead><tr><th></th><th>Expression</th><th>Spatial</th></tr></thead>
+    <tbody>
+      <tr><td>Same-type neighbor fraction</td><td>0.25</td><td>0.53</td></tr>
+      <tr><td>Isolated fraction</td><td>0.29</td><td>0.056</td></tr>
+      <tr><td>Mean top-label probability</td><td>0.75</td><td>0.85</td></tr>
+      <tr><td>Mean entropy</td><td>0.72</td><td>0.49</td></tr>
+      <tr><td>Ref holdout accuracy</td><td colspan="2">0.88 (unchanged; scRNA has no coords)</td></tr>
+    </tbody>
+  </table>
+  <div class="pair">
+    <figure>
+      <img src="visium_entropy.png" alt="Visium HD entropy after spatial refine"/>
+      <figcaption>Entropy after spatial scLDL. Speckles are no longer high-entropy noise; remaining entropy sits at tissue interfaces.</figcaption>
+    </figure>
+    <figure>
+      <img src="visium_dissonance.png" alt="Visium HD dissonance"/>
+      <figcaption>Dissonance. Mean 0.10 after snapping isolated spots to a peaked majority.</figcaption>
+    </figure>
+  </div>
+
+  <h2>Slide-seqV2 — vs RCTD singlets</h2>
+  <div class="pair">
+    <figure>
+      <img src="slideseq_pred_expr.png" alt="Slide-seqV2 expression-only"/>
+      <figcaption>Expression-only. CA/DG geometry is there; CA2, Other_neuron, and Entorhinal are sprinkled through the layers.</figcaption>
+    </figure>
+    <figure>
+      <img src="slideseq_pred.png" alt="Slide-seqV2 spatial scLDL"/>
+      <figcaption>Spatial scLDL. Principal-cell bands clean up; oligodendrocytes and ependyma stay compact.</figcaption>
+    </figure>
+  </div>
+  <div class="pair">
+    <figure>
+      <img src="slideseq_rctd.png" alt="RCTD singlets"/>
+      <figcaption>RCTD singlets on the same puck. The spatial target: continuous CA1 / CA3 / DG, oligodendrocyte tracts.</figcaption>
+    </figure>
+    <figure>
+      <img src="slideseq_confusion.png" alt="RCTD vs spatial scLDL"/>
+      <figcaption>RCTD vs spatial scLDL on 8,143 singlets. Accuracy 0.53 → 0.59. Residual errors are Other_neuron / CA2 / Entorhinal label-set mismatch, not speckle.</figcaption>
+    </figure>
+  </div>
+  <table>
+    <thead><tr><th></th><th>Expression</th><th>Spatial</th></tr></thead>
+    <tbody>
+      <tr><td>Same-type neighbor fraction</td><td>0.19</td><td>0.47</td></tr>
+      <tr><td>Isolated fraction</td><td>0.34</td><td>0.076</td></tr>
+      <tr><td>RCTD singlet accuracy</td><td>0.53</td><td>0.59</td></tr>
+      <tr><td>Mean top-label probability</td><td>0.77</td><td>0.88</td></tr>
+    </tbody>
+  </table>
+
+  <h2>How spatial scLDL is wired</h2>
+  <p>
+    <code>AnnotationPipeline(model="scldl", spatial="auto")</code>.
+    If the query has <code>obsm["spatial"]</code> or x/y columns, isolated spots
+    (≤1 of 8 neighbors sharing the hard type) are snapped toward the majority of a
+    <em>bilateral</em> spatial graph (near in space and similar in the reference PCA).
+    Interiors are left as expression scLDL so cortical layers cannot be eaten by a
+    growing majority. scRNA holdouts skip this path. <code>spatial="off"</code> restores the old maps.
+  </p>
+</main>
+<script>
+const TAB20 = [
+  "#1f77b4","#aec7e8","#ff7f0e","#ffbb78","#2ca02c","#98df8a","#d62728","#ff9896",
+  "#9467bd","#c5b0d5","#8c564b","#c49c94","#e377c2","#f7b6d2","#7f7f7f","#c7c7c7",
+  "#bcbd22","#dbdb8d","#17becf","#9edae5"
+];
+const OTHER = "#c4b8a5";
+
+const state = {
+  meta: null,
+  ds: null,
+  key: "visiumhd",
+  mode: "click",
+  selected: [],
+  box: null,
+  dragging: false,
+  view: null,
+};
+
+function parseBin(buf) {
+  const dv = new DataView(buf);
+  const n = dv.getUint32(0, true);
+  let off = 4;
+  const f32 = () => {
+    const a = new Float32Array(buf.slice(off, off + n * 4));
+    off += n * 4;
+    return a;
+  };
+  const x = f32(), y = f32(), entropy = f32(), p1 = f32(), p2 = f32();
+  const pred = new Uint8Array(buf.slice(off, off + n)); off += n;
+  const t2 = new Uint8Array(buf.slice(off, off + n));
+  return { n, x, y, entropy, p1, p2, pred, t2 };
+}
+
+function distOne(ds, i) {
+  const K = ds.types.length;
+  const p = new Float64Array(K);
+  const a = ds.pred[i];
+  const b = ds.t2[i];
+  p[a] += ds.p1[i];
+  if (b !== a) p[b] += ds.p2[i];
+  let s = 0;
+  for (let k = 0; k < K; k++) s += p[k];
+  return { p, other: Math.max(0, 1 - s) };
+}
+
+function distMean(ds, idx) {
+  const K = ds.types.length;
+  const p = new Float64Array(K);
+  let other = 0;
+  for (const i of idx) {
+    const d = distOne(ds, i);
+    for (let k = 0; k < K; k++) p[k] += d.p[k];
+    other += d.other;
+  }
+  const n = idx.length;
+  for (let k = 0; k < K; k++) p[k] /= n;
+  return { p, other: other / n };
+}
+
+function layout(ds, w, h, pad) {
+  let minX = Infinity, maxX = -Infinity, minY = Infinity, maxY = -Infinity;
+  for (let i = 0; i < ds.n; i++) {
+    const xv = ds.x[i], yv = ds.y[i];
+    if (xv < minX) minX = xv; if (xv > maxX) maxX = xv;
+    if (yv < minY) minY = yv; if (yv > maxY) maxY = yv;
+  }
+  const sx = (w - 2 * pad) / Math.max(maxX - minX, 1e-6);
+  const sy = (h - 2 * pad) / Math.max(maxY - minY, 1e-6);
+  const s = Math.min(sx, sy);
+  const ox = (w - s * (maxX - minX)) / 2;
+  const oy = (h - s * (maxY - minY)) / 2;
+  return { minX, maxX, minY, maxY, s, ox, oy, h };
+}
+
+function toPx(view, x, y) {
+  return [view.ox + (x - view.minX) * view.s, view.oy + (view.maxY - y) * view.s];
+}
+
+function drawMap() {
+  const canvas = document.getElementById("map");
+  const wrap = document.getElementById("map-wrap");
+  const ds = state.ds;
+  if (!ds) return;
+  const cssW = wrap.clientWidth || 640;
+  const cssH = Math.max(420, Math.round(cssW * 0.68));
+  const dpr = Math.min(window.devicePixelRatio || 1, 2);
+  canvas.width = Math.round(cssW * dpr);
+  canvas.height = Math.round(cssH * dpr);
+  canvas.style.width = cssW + "px";
+  canvas.style.height = cssH + "px";
+  const overlay = document.getElementById("overlay");
+  overlay.width = canvas.width;
+  overlay.height = canvas.height;
+  const ctx = canvas.getContext("2d");
+  ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+  ctx.fillStyle = "#f3efe6";
+  ctx.fillRect(0, 0, cssW, cssH);
+  const view = layout(ds, cssW, cssH, 18);
+  state.view = { ...view, cssW, cssH, dpr };
+  const r = ds.key === "visiumhd" ? 1.15 : 1.35;
+  const chosen = new Set(state.selected);
+  ctx.globalAlpha = 0.92;
+  for (let i = 0; i < ds.n; i++) {
+    const [px, py] = toPx(view, ds.x[i], ds.y[i]);
+    ctx.fillStyle = TAB20[ds.pred[i] % TAB20.length];
+    ctx.beginPath();
+    ctx.arc(px, py, r, 0, Math.PI * 2);
+    ctx.fill();
+  }
+  if (chosen.size) {
+    ctx.lineWidth = 1.4;
+    ctx.strokeStyle = "#111";
+    for (const i of chosen) {
+      const [px, py] = toPx(view, ds.x[i], ds.y[i]);
+      ctx.beginPath();
+      ctx.arc(px, py, r + 2.2, 0, Math.PI * 2);
+      ctx.stroke();
+    }
+  }
+  drawOverlay();
+}
+
+function drawOverlay() {
+  const overlay = document.getElementById("overlay");
+  const ctx = overlay.getContext("2d");
+  const dpr = state.view ? state.view.dpr : 1;
+  ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+  ctx.clearRect(0, 0, overlay.width, overlay.height);
+  if (!state.box) return;
+  const { x0, y0, x1, y1 } = state.box;
+  ctx.strokeStyle = "rgba(27,27,24,.85)";
+  ctx.fillStyle = "rgba(35,78,112,.12)";
+  ctx.lineWidth = 1;
+  ctx.fillRect(Math.min(x0, x1), Math.min(y0, y1), Math.abs(x1 - x0), Math.abs(y1 - y0));
+  ctx.strokeRect(Math.min(x0, x1), Math.min(y0, y1), Math.abs(x1 - x0), Math.abs(y1 - y0));
+}
+
+function eventPos(ev) {
+  const canvas = document.getElementById("map");
+  const r = canvas.getBoundingClientRect();
+  return [ev.clientX - r.left, ev.clientY - r.top];
+}
+
+function nearest(px, py) {
+  const ds = state.ds, view = state.view;
+  let best = -1, bestD = 64;
+  for (let i = 0; i < ds.n; i++) {
+    const [x, y] = toPx(view, ds.x[i], ds.y[i]);
+    const d = (x - px) * (x - px) + (y - py) * (y - py);
+    if (d < bestD) { bestD = d; best = i; }
+  }
+  return best;
+}
+
+function inBox(px0, py0, px1, py1) {
+  const ds = state.ds, view = state.view;
+  const xLo = Math.min(px0, px1), xHi = Math.max(px0, px1);
+  const yLo = Math.min(py0, py1), yHi = Math.max(py0, py1);
+  const out = [];
+  for (let i = 0; i < ds.n; i++) {
+    const [x, y] = toPx(view, ds.x[i], ds.y[i]);
+    if (x >= xLo && x <= xHi && y >= yLo && y <= yHi) out.push(i);
+  }
+  return out;
+}
+
+function renderBars(dist, title, meta) {
+  document.getElementById("panel-title").textContent = title;
+  document.getElementById("panel-meta").textContent = meta;
+  const rows = dist.p.map((v, k) => ({ name: state.ds.types[k], v, color: TAB20[k % TAB20.length] }));
+  if (dist.other > 0.004) rows.push({ name: "other", v: dist.other, color: OTHER });
+  rows.sort((a, b) => b.v - a.v);
+  const max = Math.max(rows[0]?.v || 1, 1e-6);
+  document.getElementById("bars").innerHTML = rows.map(r => `
+    <div class="bar-row">
+      <span class="name" title="${r.name}">${r.name}</span>
+      <div class="track"><div class="fill" style="width:${(100 * r.v / max).toFixed(1)}%;background:${r.color}"></div></div>
+      <span class="pct">${(100 * r.v).toFixed(1)}</span>
+    </div>
+  `).join("");
+}
+
+function showSelection() {
+  const ds = state.ds;
+  const idx = state.selected;
+  if (!idx.length) {
+    document.getElementById("panel-title").textContent = "No cell selected";
+    document.getElementById("panel-meta").textContent = "Click a spot, or switch to box select.";
+    document.getElementById("bars").innerHTML = '<p class="empty">The simplex for the selected cell appears here.</p>';
+    document.getElementById("status").textContent = `${ds.n.toLocaleString()} spots`;
+    drawMap();
+    return;
+  }
+  if (idx.length === 1) {
+    const i = idx[0];
+    const d = distOne(ds, i);
+    const t = ds.types[ds.pred[i]];
+    renderBars(
+      d,
+      t,
+      `spot ${i.toLocaleString()} · entropy ${ds.entropy[i].toFixed(3)} · p₁ ${ds.p1[i].toFixed(3)} · p₂ ${ds.p2[i].toFixed(3)}`
+    );
+    document.getElementById("status").textContent = `1 cell · ${t}`;
+  } else {
+    const d = distMean(ds, idx);
+    renderBars(
+      d,
+      `Mean of ${idx.length.toLocaleString()} cells`,
+      "Average reconstructed simplex over the selection."
+    );
+    document.getElementById("status").textContent = `${idx.length.toLocaleString()} cells selected`;
+  }
+  drawMap();
+}
+
+async function loadDataset(key) {
+  const spec = state.meta.datasets[key];
+  document.getElementById("status").textContent = "Loading spots…";
+  const buf = await fetch(spec.file).then(r => r.arrayBuffer());
+  const ds = parseBin(buf);
+  ds.types = spec.types;
+  ds.key = key;
+  state.key = key;
+  state.ds = ds;
+  state.selected = [];
+  state.box = null;
+  showSelection();
+}
+
+function bind() {
+  const canvas = document.getElementById("map");
+  document.getElementById("dataset").addEventListener("change", ev => loadDataset(ev.target.value));
+  document.getElementById("mode-click").addEventListener("click", () => {
+    state.mode = "click";
+    document.getElementById("mode-click").classList.add("active");
+    document.getElementById("mode-box").classList.remove("active");
+  });
+  document.getElementById("mode-box").addEventListener("click", () => {
+    state.mode = "box";
+    document.getElementById("mode-box").classList.add("active");
+    document.getElementById("mode-click").classList.remove("active");
+  });
+  document.getElementById("clear").addEventListener("click", () => {
+    state.selected = [];
+    state.box = null;
+    showSelection();
+  });
+  canvas.addEventListener("pointerdown", ev => {
+    const [px, py] = eventPos(ev);
+    if (state.mode === "click") {
+      const i = nearest(px, py);
+      state.selected = i >= 0 ? [i] : [];
+      showSelection();
+      return;
+    }
+    state.dragging = true;
+    state.box = { x0: px, y0: py, x1: px, y1: py };
+    canvas.setPointerCapture(ev.pointerId);
+    drawOverlay();
+  });
+  canvas.addEventListener("pointermove", ev => {
+    if (!state.dragging || !state.box) return;
+    const [px, py] = eventPos(ev);
+    state.box.x1 = px;
+    state.box.y1 = py;
+    drawOverlay();
+  });
+  canvas.addEventListener("pointerup", ev => {
+    if (!state.dragging || !state.box) return;
+    state.dragging = false;
+    const b = state.box;
+    state.selected = inBox(b.x0, b.y0, b.x1, b.y1);
+    state.box = null;
+    showSelection();
+  });
+  window.addEventListener("resize", () => { if (state.ds) drawMap(); });
+}
+
+fetch("explorer.json")
+  .then(r => r.json())
+  .then(meta => {
+    state.meta = meta;
+    bind();
+    return loadDataset("visiumhd");
+  })
+  .catch(err => {
+    document.getElementById("status").textContent = "Could not load explorer data.";
+    console.error(err);
+  });
+</script>
+</body>
+</html>
