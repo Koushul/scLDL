@@ -236,9 +236,7 @@ def run_slideseq(max_per_class=350, max_query=3500, epochs=20):
     batch_key = "batch" if ref.obs["batch"].nunique() > 1 else None
     pipe.fit(ref, label_key="cell_type", batch_key=batch_key)
     rows = []
-    xy = np.asarray(query.obsm["spatial"]) if "spatial" in query.obsm else None
-    if xy is None and {"xcoord", "ycoord"} <= set(query.obs.columns):
-        xy = np.column_stack([query.obs["xcoord"].to_numpy(), query.obs["ycoord"].to_numpy()])
+    xy = try_spatial_xy(query)
     for name, graph, smnn in CFGS:
         pipe.graph_refine = graph
         pipe.supervised_mnn = smnn
