@@ -22,7 +22,14 @@ wheels/
 MANIFEST
 
 # Virtual Env
-venv/
+.venv/
+
+# Data and local runs
+/data/
+/models/
+/reports/
+*.h5ad
+.pytest_cache/
 
 # Jupyter Notebook
 .ipynb_checkpoints
