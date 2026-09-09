@@ -30,12 +30,6 @@ def spatial_knn_graph(xy, z=None, n_neighbors: int = 12):
     return sparse.csr_matrix((w.ravel(), (rows, idx.ravel())), shape=(n, n))
 
 
-def local_purity(p, graph):
-    p = row_normalize(p)
-    neigh = graph @ p
-    return np.clip((p * neigh).sum(axis=1), 0.0, 1.0)
-
-
 def neighbor_agreement(labels, xy, n_neighbors: int = 8):
     labels = np.asarray(labels).astype(str)
     n = len(labels)
@@ -56,25 +50,35 @@ def spatial_stats(labels, xy, n_neighbors: int = 8):
     }
 
 
-def spatial_refine(p, xy, z=None, n_neighbors: int = 12, n_iter: int = 6, task: str = "type"):
-    """Smooth a label simplex on the tissue, leaving confident interiors intact.
+def spatial_refine(p, xy, z=None, n_neighbors: int = 12, n_iter: int = 2, task: str = "type"):
+    """Reassign isolated speckles; leave confident spatial interiors unchanged.
 
-    Isolated / contested spots take more mass from bilateral spatial neighbors
-    (near in space and similar in expression). Layer interiors stay peaked.
+    Alpha is frozen from the expression-only map so majority domains cannot
+    expand across layer boundaries over repeated iterations.
     """
     p = row_normalize(p)
     n = len(p)
     if n < 3:
         return p
-    graph = spatial_knn_graph(xy, z=z, n_neighbors=n_neighbors)
-    conf = p.max(axis=1)
-    power = 1.35 if task == "type" else 0.85
-    floor = 0.02 if task == "type" else 0.08
-    ceil = 0.88 if task == "type" else 0.75
+    k = max(4, int(n_neighbors))
+    graph = spatial_knn_graph(xy, z=z, n_neighbors=k)
+    agree = neighbor_agreement(p.argmax(axis=1), xy, n_neighbors=k)
+    alpha = np.zeros(n, dtype=np.float64)
+    speckle = agree <= (1.0 / k + 1e-9)
+    weak = (agree < 0.34) & ~speckle
+    if task == "type":
+        alpha[speckle] = 0.78
+        alpha[weak] = 0.22
+        n_iter = min(max(int(n_iter), 2), 3)
+    else:
+        alpha[speckle] = 0.55
+        alpha[weak] = 0.30
+        n_iter = max(int(n_iter), 3)
+    interior = agree >= 0.5
+    alpha[interior] = 0.0
     out = p.copy()
     for _ in range(max(1, int(n_iter))):
         neigh = np.asarray(graph @ out)
-        purity = np.clip((out * neigh).sum(axis=1), 0.0, 1.0)
-        alpha = np.clip((1.0 - purity) ** power * (0.55 + 0.45 * (1.0 - conf)), floor, ceil)
         out = row_normalize((1.0 - alpha[:, None]) * out + alpha[:, None] * neigh)
+    out[interior] = p[interior]
     return out

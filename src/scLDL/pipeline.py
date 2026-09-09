@@ -253,7 +253,8 @@ class AnnotationPipeline:
             return dist
         self.last_spatial_ = "on"
         k = 8 if self.task == "type" else 12
-        return spatial_refine(dist, xy, z=z, n_neighbors=k, n_iter=6, task=self.task)
+        n_iter = 3 if self.task == "type" else 4
+        return spatial_refine(dist, xy, z=z, n_neighbors=k, n_iter=n_iter, task=self.task)
 
     def predict_distribution(self, adata):
         self._check_fitted()

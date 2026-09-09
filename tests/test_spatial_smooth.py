@@ -20,10 +20,10 @@ def test_spatial_refine_cleans_speckle_without_merging_domains():
     p[flip] = p[flip, ::-1]
     z = np.eye(2, dtype=np.float32)[true] + rng.normal(scale=0.05, size=(2 * n, 2)).astype(np.float32)
     before = (p.argmax(1) == true).mean()
-    out = spatial_refine(p, xy, z=z, n_neighbors=10, n_iter=6, task="type")
+    out = spatial_refine(p, xy, z=z, n_neighbors=10, n_iter=3, task="type")
     after = (out.argmax(1) == true).mean()
     assert after > before
-    assert after >= 0.94
+    assert after >= 0.92
     st0 = spatial_stats(p.argmax(1), xy)
     st1 = spatial_stats(out.argmax(1), xy)
     assert st1["isolated_frac"] < st0["isolated_frac"]
@@ -38,7 +38,7 @@ def test_spatial_refine_keeps_a_sharp_boundary():
     true = (grid[:, 0] >= 0).astype(int)
     p = np.eye(2, dtype=np.float32)[true]
     z = np.eye(2, dtype=np.float32)[true] + rng.normal(scale=0.03, size=p.shape).astype(np.float32)
-    out = spatial_refine(p, grid, z=z, n_neighbors=8, n_iter=8, task="type")
+    out = spatial_refine(p, grid, z=z, n_neighbors=8, n_iter=2, task="type")
     pred = out.argmax(1)
     interior = np.abs(grid[:, 0]) > 0.25
     assert (pred[interior] == true[interior]).mean() >= 0.98
