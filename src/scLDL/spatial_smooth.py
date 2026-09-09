@@ -63,21 +63,22 @@ def spatial_refine(p, xy, z=None, n_neighbors: int = 12, n_iter: int = 2, task: 
     k = max(4, int(n_neighbors))
     graph = spatial_knn_graph(xy, z=z, n_neighbors=k)
     agree = neighbor_agreement(p.argmax(axis=1), xy, n_neighbors=k)
-    alpha = np.zeros(n, dtype=np.float64)
     speckle = agree <= (1.0 / k + 1e-9)
-    weak = (agree < 0.34) & ~speckle
+    neigh = np.asarray(graph @ p)
     if task == "type":
-        alpha[speckle] = 0.78
-        alpha[weak] = 0.22
-        n_iter = min(max(int(n_iter), 2), 3)
-    else:
-        alpha[speckle] = 0.55
-        alpha[weak] = 0.30
-        n_iter = max(int(n_iter), 3)
+        maj = np.zeros_like(p)
+        maj[np.arange(n), neigh.argmax(axis=1)] = 1.0
+        out = p.copy()
+        out[speckle] = row_normalize(0.12 * p[speckle] + 0.88 * maj[speckle])
+        return out
+    alpha = np.zeros(n, dtype=np.float64)
+    weak = (agree < 0.34) & ~speckle
+    alpha[speckle] = 0.55
+    alpha[weak] = 0.30
     interior = agree >= 0.5
     alpha[interior] = 0.0
     out = p.copy()
-    for _ in range(max(1, int(n_iter))):
+    for _ in range(max(3, int(n_iter))):
         neigh = np.asarray(graph @ out)
         out = row_normalize((1.0 - alpha[:, None]) * out + alpha[:, None] * neigh)
     out[interior] = p[interior]
