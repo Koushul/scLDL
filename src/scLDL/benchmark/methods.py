@@ -262,7 +262,7 @@ class SCANVIMethod:
 
 
 CORE_METHODS = ["majority", "logistic", "svm", "knn", "pca_knn", "scanpy_ingest", "scldl_mlp", "scldl_concentration"]
-ALL_METHODS = CORE_METHODS + ["scldl_hybrid", "scldl_lible", "celltypist", "scanvi"]
+ALL_METHODS = CORE_METHODS + ["scldl_hybrid", "scldl_lible", "scldl_interpretable", "celltypist", "scanvi"]
 
 
 def build_method(name: str, epochs: int = 40, n_hidden: int = 128, batch_size: int = 64):
@@ -282,6 +282,18 @@ def build_method(name: str, epochs: int = 40, n_hidden: int = 128, batch_size: i
         return SCLDLMethod("mlp", n_hidden=n_hidden, epochs=epochs, batch_size=batch_size)
     if name == "scldl_concentration":
         return SCLDLMethod("concentration", n_hidden=n_hidden, epochs=epochs, batch_size=batch_size)
+    if name == "scldl_interpretable":
+        return SCLDLMethod(
+            "interpretable",
+            n_hidden=n_hidden,
+            epochs=epochs,
+            batch_size=batch_size,
+            mixup_alpha=0.0,
+            peak_weight=0.15,
+            lineage_weight=0.0,
+            manifold_weight=0.0,
+            vacuity_weight=0.0,
+        )
     if name == "scldl_hybrid":
         return SCLDLMethod("hybrid", n_hidden=n_hidden, epochs=epochs, batch_size=batch_size, alpha=0.01)
     if name == "scldl_lible":

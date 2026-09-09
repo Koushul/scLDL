@@ -18,7 +18,7 @@ def looks_like_counts(x) -> bool:
     return bool(frac_int > 0.9)
 
 
-def preprocess_reference(adata, n_top_genes: int = 2000, copy: bool = True):
+def preprocess_reference(adata, n_top_genes: int = 2000, copy: bool = True, always_include=None):
     import scanpy as sc
 
     ad = adata.copy() if copy else adata
@@ -26,7 +26,13 @@ def preprocess_reference(adata, n_top_genes: int = 2000, copy: bool = True):
         sc.pp.normalize_total(ad, target_sum=1e4)
         sc.pp.log1p(ad)
     if n_top_genes and ad.n_vars > n_top_genes:
-        sc.pp.highly_variable_genes(ad, n_top_genes=n_top_genes, subset=True)
+        sc.pp.highly_variable_genes(ad, n_top_genes=n_top_genes, subset=False)
+        keep = ad.var["highly_variable"].copy()
+        if always_include is not None:
+            for g in always_include:
+                if g in keep.index:
+                    keep.loc[g] = True
+        ad = ad[:, keep].copy()
     return ad
 
 

@@ -11,6 +11,7 @@ from scLDL.models import (
     LIBLE,
     MLPBaseline,
     StateConcentrationLE,
+    InterpretableLE,
 )
 from scLDL.pipeline import AnnotationPipeline
 
@@ -22,6 +23,7 @@ __all__ = [
     "ImprovedLEVI",
     "ConcentrationLE",
     "StateConcentrationLE",
+    "InterpretableLE",
     "HybridLEVI",
     "ANNOTATION_MODELS",
     "classification_metrics",
