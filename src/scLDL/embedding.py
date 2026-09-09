@@ -52,12 +52,16 @@ class ReferenceEmbedding:
             shift = float(np.linalg.norm(z.mean(axis=0) - self.ref_mean_z_) / radius)
             correct = "mnn" if shift > 0.35 else "none"
         self.last_correct_ = correct if correct not in (None, False) else "none"
+        self.last_aligned_ = z
         if correct in (None, "none", False):
             return z
         if correct == "center":
-            return match_moments(z, self.ref_z_)
+            aligned = match_moments(z, self.ref_z_)
+            self.last_aligned_ = aligned
+            return aligned
         if correct == "mnn":
             aligned = match_moments(z, self.ref_z_)
+            self.last_aligned_ = aligned
             return mnn_map(aligned, self.ref_z_, n_neighbors=self.n_neighbors)
         raise ValueError(f"Unknown query correction {correct!r}")
 
@@ -92,3 +96,19 @@ def mnn_map(query, ref, n_neighbors: int = 20, shrink: float = 0.85):
     w /= np.clip(w.sum(axis=1, keepdims=True), 1e-12, None)
     target = (w[..., None] * ref[idx_q2r]).sum(axis=1)
     return (query + shrink * (target - query)).astype(np.float32)
+
+
+def mnn_map_supervised(query, ref, query_labels, ref_labels, n_neighbors: int = 20, shrink: float = 0.85):
+    """Second-pass MNN restricted to provisional query/reference type pairs (iSMNN-style)."""
+    query = np.asarray(query, dtype=np.float64)
+    ref = np.asarray(ref, dtype=np.float64)
+    query_labels = np.asarray(query_labels)
+    ref_labels = np.asarray(ref_labels)
+    out = query.copy()
+    for t in np.unique(query_labels):
+        q_idx = np.flatnonzero(query_labels == t)
+        r_idx = np.flatnonzero(ref_labels == t)
+        if len(q_idx) < 2 or len(r_idx) < 2:
+            continue
+        out[q_idx] = mnn_map(query[q_idx], ref[r_idx], n_neighbors=n_neighbors, shrink=shrink)
+    return out.astype(np.float32)
