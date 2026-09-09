@@ -106,13 +106,15 @@ def graph_refine(p, z, vacuity=None, xy=None, n_neighbors: int = 15, n_iter: int
         w = w * np.exp(-(dxy * dxy) / np.maximum(tau ** 2, 1e-12))
         w[:, 0] = 0.0
     conf = p.max(axis=1)
+    labels = p.argmax(axis=1)
+    disagree = (labels[idx[:, 1:]] != labels[:, None]).mean(axis=1) if k > 1 else np.zeros(n)
     if vacuity is not None:
         vac = np.clip(np.asarray(vacuity, dtype=np.float64).ravel(), 0.0, 1.0)
         source = np.clip(1.0 - vac, 0.05, 1.0)
-        lam = np.clip(float(mix) * np.maximum(1.0 - conf, vac), 0.0, 0.85)
+        lam = float(mix) * np.clip(0.15 * np.maximum(1.0 - conf, vac) + 0.85 * disagree, 0.0, 0.85)
     else:
         source = np.clip(conf, 0.05, 1.0)
-        lam = np.clip(float(mix) * (1.0 - conf), 0.0, 0.85)
+        lam = float(mix) * np.clip(0.15 * (1.0 - conf) + 0.85 * disagree, 0.0, 0.85)
     w = w * source[idx]
     w = w / np.clip(w.sum(axis=1, keepdims=True), 1e-12, None)
     out = np.asarray(p, dtype=np.float64)

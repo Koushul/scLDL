@@ -32,11 +32,22 @@ def test_graph_refine_repairs_isolated_flips():
 
 
 def test_graph_refine_keeps_peaked_cells():
-    p = np.array([[0.96, 0.04], [0.05, 0.95]], dtype=np.float32)
-    z = np.array([[0.0, 0.0], [3.0, 0.0]], dtype=np.float64)
-    out = graph_refine(p, z, n_neighbors=1, n_iter=4, mix=0.55)
-    assert out[0, 0] > 0.9
-    assert out[1, 1] > 0.9
+    rng = np.random.default_rng(1)
+    p = np.vstack(
+        [
+            np.tile(np.array([0.96, 0.04], dtype=np.float32), (8, 1)),
+            np.tile(np.array([0.05, 0.95], dtype=np.float32), (8, 1)),
+        ]
+    )
+    z = np.vstack(
+        [
+            rng.normal([0.0, 0.0], 0.05, size=(8, 2)),
+            rng.normal([4.0, 0.0], 0.05, size=(8, 2)),
+        ]
+    )
+    out = graph_refine(p, z, n_neighbors=5, n_iter=4, mix=0.55)
+    assert out[:8, 0].min() > 0.9
+    assert out[8:, 1].min() > 0.9
 
 
 def test_mnn_map_supervised_matches_per_type():
