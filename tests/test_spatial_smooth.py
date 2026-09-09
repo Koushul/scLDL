@@ -59,6 +59,7 @@ def test_pipeline_spatial_auto_uses_coordinates():
     pipe.fit(ad, label_key="cell_type")
     out = pipe.annotate(ad, copy=True)
     assert pipe.last_spatial_ == "on"
+    assert pipe.last_graph_refine_ == "on"
     assert "X_scldl_expr" in out.obsm
     assert "scldl_pred_expr" in out.obs
     pipe.spatial = "off"

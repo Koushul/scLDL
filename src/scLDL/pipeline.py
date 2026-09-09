@@ -35,10 +35,10 @@ class AnnotationPipeline:
         correction, with a type-restricted second pass) so annotation does not
         require sharing a technical batch.
 
-        After blending, ``graph_refine="on"`` smooths the simplex on the query
-        kNN graph so nearby cells share mass while peaked cells stay put.
-        When the query has coordinates, ``spatial="auto"`` then snaps isolated
-        speckles without washing out layer interiors.
+        After blending, ``graph_refine="auto"`` smooths the simplex on the query
+        neighborhood graph when coordinates are present. ``supervised_mnn="on"``
+        rematches MNN partners within provisional types (off by default; it can
+        kidnap similar subtypes).
     """
 
     def __init__(
@@ -58,8 +58,8 @@ class AnnotationPipeline:
         lineage_edges=None,
         query_correct: str = "auto",
         spatial: str = "auto",
-        graph_refine: str = "on",
-        supervised_mnn: str = "on",
+        graph_refine: str = "auto",
+        supervised_mnn: str = "off",
         **model_kwargs,
     ):
         if model not in ANNOTATION_MODELS:
@@ -220,12 +220,14 @@ class AnnotationPipeline:
             return False
         return correct == "mnn"
 
-    def _use_graph_refine(self):
+    def _use_graph_refine(self, adata=None):
         if self.graph_refine == "off":
             return False
         if self.graph_refine == "on":
             return True
-        return self._is_scldl()
+        if self.spatial == "off":
+            return False
+        return adata is not None and try_spatial_xy(adata) is not None
 
     def _model_inputs(self, x_log):
         if self.embed_ is None:
@@ -251,7 +253,7 @@ class AnnotationPipeline:
 
     def _apply_graph(self, parts, adata):
         dist = parts["blended"]
-        if not self._use_graph_refine():
+        if not self._use_graph_refine(adata):
             self.last_graph_refine_ = "off"
             return dist
         xy = try_spatial_xy(adata) if self.spatial != "off" else None
