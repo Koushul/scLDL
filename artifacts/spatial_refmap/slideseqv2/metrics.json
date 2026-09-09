@@ -1,0 +1,158 @@
+{
+  "dataset": "slideseqv2",
+  "n_ref": 9978,
+  "n_query": 28000,
+  "n_types": 16,
+  "types": [
+    "Astrocyte",
+    "CA1",
+    "CA2",
+    "CA3",
+    "DG",
+    "Endothelial",
+    "Entorhinal",
+    "Ependymal",
+    "Interneuron",
+    "Microglia",
+    "Mural",
+    "Neurogenesis",
+    "OPC",
+    "Oligodendrocyte",
+    "Other_neuron",
+    "Subiculum"
+  ],
+  "query_correct": "mnn",
+  "pred_counts": {
+    "CA1": 3455,
+    "Oligodendrocyte": 3150,
+    "Other_neuron": 2793,
+    "Astrocyte": 2718,
+    "CA3": 2284,
+    "Interneuron": 2279,
+    "Subiculum": 1834,
+    "Entorhinal": 1459,
+    "DG": 1402,
+    "Endothelial": 1319,
+    "Neurogenesis": 1118,
+    "OPC": 1038,
+    "Microglia": 1037,
+    "Mural": 830,
+    "CA2": 820,
+    "Ependymal": 464
+  },
+  "mean_entropy": 0.6581348204932194,
+  "mean_dissonance": 0.155535027384758,
+  "mean_p1": 0.7666658759117126,
+  "marker_check": [
+    {
+      "type": "Astrocyte",
+      "markers": "GJA1,AQP4,SLC1A2,ALDH1L1",
+      "mean_in_pred": 0.9575974941253662,
+      "mean_out_pred": 0.27531445026397705
+    },
+    {
+      "type": "CA1",
+      "markers": "FIBCD1,WFS1",
+      "mean_in_pred": 0.11562952399253845,
+      "mean_out_pred": 0.05084538459777832
+    },
+    {
+      "type": "CA2",
+      "markers": "AMIGO2,RGS14",
+      "mean_in_pred": 0.12073170393705368,
+      "mean_out_pred": 0.02886313386261463
+    },
+    {
+      "type": "CA3",
+      "markers": "PVRL3,BOK",
+      "mean_in_pred": 0.17403677105903625,
+      "mean_out_pred": 0.06589283049106598
+    },
+    {
+      "type": "DG",
+      "markers": "PROX1,DOCK10",
+      "mean_in_pred": 0.2685449421405792,
+      "mean_out_pred": 0.048067525029182434
+    },
+    {
+      "type": "Endothelial",
+      "markers": "FLT1,CLDN5,PECAM1",
+      "mean_in_pred": 0.11726055294275284,
+      "mean_out_pred": 0.005971789825707674
+    },
+    {
+      "type": "Entorhinal",
+      "markers": "SLC17A6,NELL1",
+      "mean_in_pred": 0.09492803364992142,
+      "mean_out_pred": 0.10284088551998138
+    },
+    {
+      "type": "Ependymal",
+      "markers": "FOXJ1,CFAP54",
+      "mean_in_pred": 0.32866379618644714,
+      "mean_out_pred": 0.006373474840074778
+    },
+    {
+      "type": "Interneuron",
+      "markers": "GAD1,GAD2,SLC32A1",
+      "mean_in_pred": 0.6561357378959656,
+      "mean_out_pred": 0.03305988386273384
+    },
+    {
+      "type": "Microglia",
+      "markers": "C1QA,C1QB,CX3CR1,TMEM119",
+      "mean_in_pred": 0.3522179424762726,
+      "mean_out_pred": 0.020871194079518318
+    },
+    {
+      "type": "Mural",
+      "markers": "RGS5,PDGFRB,ACTA2",
+      "mean_in_pred": 0.10522088408470154,
+      "mean_out_pred": 0.011507791467010975
+    },
+    {
+      "type": "Neurogenesis",
+      "markers": "DCX,TOP2A",
+      "mean_in_pred": 0.056797854602336884,
+      "mean_out_pred": 0.00667733047157526
+    },
+    {
+      "type": "OPC",
+      "markers": "PDGFRA,CSPG4,TNR",
+      "mean_in_pred": 0.21130380034446716,
+      "mean_out_pred": 0.028150729835033417
+    },
+    {
+      "type": "Oligodendrocyte",
+      "markers": "MBP,PLP1,MOG,MAG",
+      "mean_in_pred": 8.640317916870117,
+      "mean_out_pred": 0.8510664105415344
+    },
+    {
+      "type": "Subiculum",
+      "markers": "DNER,TPBG",
+      "mean_in_pred": 0.07442747801542282,
+      "mean_out_pred": 0.07085531204938889
+    }
+  ],
+  "rctd_all": {
+    "n": 28000,
+    "accuracy": 0.34075,
+    "balanced_accuracy": 0.3913252287343707,
+    "macro_f1": 0.24182810961626786,
+    "accuracy_shared_types": 0.34655479277904905,
+    "n_shared_types": 27531
+  },
+  "rctd_singlets": {
+    "n": 8143,
+    "accuracy": 0.5235171312783986,
+    "balanced_accuracy": 0.5029322351079504,
+    "macro_f1": 0.3568212649655944,
+    "accuracy_shared_types": 0.5283837382250868,
+    "n_shared_types": 8068
+  },
+  "ref_holdout": {
+    "accuracy": 0.7556596409055425,
+    "macro_f1": 0.6215891451333043
+  }
+}

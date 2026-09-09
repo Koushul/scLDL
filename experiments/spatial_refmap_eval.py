@@ -10,7 +10,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
 import scanpy as sc
-from sklearn.metrics import accuracy_score, balanced_accuracy_score, f1_score
+from sklearn.metrics import accuracy_score, balanced_accuracy_score, confusion_matrix, f1_score
 
 from scLDL.metrics import classification_metrics
 from scLDL.pipeline import AnnotationPipeline
@@ -56,10 +56,10 @@ def _load_slideseq():
     if rctd_path.exists():
         rctd = pd.read_csv(rctd_path, index_col=0)
         shared = query.obs_names.intersection(rctd.index)
-        query.obs["rctd_class"] = np.nan
-        query.obs["rctd_type"] = np.nan
-        query.obs.loc[shared, "rctd_class"] = rctd.loc[shared, "spot_class"].astype(str)
-        query.obs.loc[shared, "rctd_type"] = map_rctd(rctd.loc[shared, "celltype_1"])
+        query.obs["rctd_class"] = pd.Series(index=query.obs_names, dtype="object")
+        query.obs["rctd_type"] = pd.Series(index=query.obs_names, dtype="object")
+        query.obs.loc[shared, "rctd_class"] = rctd.loc[shared, "spot_class"].astype(str).to_numpy()
+        query.obs.loc[shared, "rctd_type"] = map_rctd(rctd.loc[shared, "celltype_1"]).to_numpy()
     ref = standardize_gene_names(ref)
     query = standardize_gene_names(query)
     query = _filter_spots(query, min_genes=80)
@@ -102,6 +102,30 @@ def _spatial_cont(ad, values, path, title, s=2.4, cmap="magma"):
     fig.colorbar(sca, ax=ax, fraction=0.046, pad=0.04)
     fig.tight_layout()
     fig.savefig(path, dpi=160, bbox_inches="tight")
+    plt.close(fig)
+
+
+def _confusion_plot(y_true, y_pred, path, title):
+    mask = pd.notna(y_true) & pd.notna(y_pred)
+    yt = np.asarray(y_true)[mask].astype(str)
+    yp = np.asarray(y_pred)[mask].astype(str)
+    labels = sorted(set(yt) | set(yp))
+    if len(yt) == 0 or len(labels) < 2:
+        return
+    cm = confusion_matrix(yt, yp, labels=labels)
+    cm = cm / np.maximum(cm.sum(axis=1, keepdims=True), 1)
+    fig, ax = plt.subplots(figsize=(7.2, 6.4))
+    im = ax.imshow(cm, cmap="Blues", vmin=0, vmax=1)
+    ax.set_xticks(range(len(labels)))
+    ax.set_yticks(range(len(labels)))
+    ax.set_xticklabels(labels, rotation=90, fontsize=7)
+    ax.set_yticklabels(labels, fontsize=7)
+    ax.set_xlabel("scLDL")
+    ax.set_ylabel("RCTD")
+    ax.set_title(title)
+    fig.colorbar(im, ax=ax, fraction=0.046)
+    fig.tight_layout()
+    fig.savefig(path, dpi=140, bbox_inches="tight")
     plt.close(fig)
 
 
@@ -212,6 +236,12 @@ def _run_dataset(name, ref, query, args):
         sub = query[singlets & query.obs["rctd_type"].notna()].copy()
         if sub.n_obs > 50:
             _spatial_cat(sub, "rctd_type", out_dir / "spatial_rctd_singlets.png", f"{name} RCTD singlets")
+            _confusion_plot(
+                sub.obs["rctd_type"],
+                sub.obs["scldl_pred"],
+                out_dir / "rctd_confusion_singlets.png",
+                f"{name} RCTD vs scLDL (singlets)",
+            )
 
     held = ref_all.obs_names.difference(ref.obs_names)
     if len(held) >= 80:

@@ -1,0 +1,292 @@
+[
+  {
+    "dataset": "visiumhd",
+    "n_ref": 9800,
+    "n_query": 27939,
+    "n_types": 14,
+    "types": [
+      "Astro",
+      "CA",
+      "DG",
+      "L2/3 IT CTX",
+      "L4 IT CTX",
+      "L4/5 IT CTX",
+      "L5 IT CTX",
+      "L5 PT CTX",
+      "L5/6 IT CTX",
+      "L6 CT CTX",
+      "L6b CTX",
+      "Microglia",
+      "Oligo",
+      "SUB"
+    ],
+    "query_correct": "mnn",
+    "pred_counts": {
+      "Astro": 6059,
+      "L2/3 IT CTX": 4231,
+      "L5/6 IT CTX": 2919,
+      "Oligo": 2557,
+      "L5 PT CTX": 2021,
+      "L6 CT CTX": 1994,
+      "CA": 1789,
+      "Microglia": 1447,
+      "L4/5 IT CTX": 1318,
+      "L6b CTX": 1225,
+      "L4 IT CTX": 1140,
+      "L5 IT CTX": 856,
+      "DG": 318,
+      "SUB": 65
+    },
+    "mean_entropy": 0.7167636319385983,
+    "mean_dissonance": 0.17273283004760742,
+    "mean_p1": 0.7452152967453003,
+    "marker_check": [
+      {
+        "type": "Astro",
+        "markers": "GJA1,AQP4,SLC1A2",
+        "mean_in_pred": 0.7316389083862305,
+        "mean_out_pred": 0.3547227382659912
+      },
+      {
+        "type": "CA",
+        "markers": "FIBCD1,NECTIN3,WFS1",
+        "mean_in_pred": 0.18986399471759796,
+        "mean_out_pred": 0.04982791468501091
+      },
+      {
+        "type": "DG",
+        "markers": "PROX1,DOCK10",
+        "mean_in_pred": 2.572327136993408,
+        "mean_out_pred": 0.113410085439682
+      },
+      {
+        "type": "L2/3 IT CTX",
+        "markers": "CUX2,SATB2",
+        "mean_in_pred": 0.07598676532506943,
+        "mean_out_pred": 0.06048591062426567
+      },
+      {
+        "type": "L4 IT CTX",
+        "markers": "RORB",
+        "mean_in_pred": 0.04385964944958687,
+        "mean_out_pred": 0.04604649543762207
+      },
+      {
+        "type": "L4/5 IT CTX",
+        "markers": "RORB,RPRM",
+        "mean_in_pred": 0.051213961094617844,
+        "mean_out_pred": 0.06061004474759102
+      },
+      {
+        "type": "L5 IT CTX",
+        "markers": "DEPTOR",
+        "mean_in_pred": 0.004672897048294544,
+        "mean_out_pred": 0.005021600052714348
+      },
+      {
+        "type": "L5 PT CTX",
+        "markers": "BCL6",
+        "mean_in_pred": 0.09302325546741486,
+        "mean_out_pred": 0.05181726813316345
+      },
+      {
+        "type": "L5/6 IT CTX",
+        "markers": "DEPTOR",
+        "mean_in_pred": 0.00685166148468852,
+        "mean_out_pred": 0.0047961631789803505
+      },
+      {
+        "type": "L6 CT CTX",
+        "markers": "FOXP2,SULF1",
+        "mean_in_pred": 0.16549648344516754,
+        "mean_out_pred": 0.04285989701747894
+      },
+      {
+        "type": "L6b CTX",
+        "markers": "CCN2",
+        "mean_in_pred": 0.16734693944454193,
+        "mean_out_pred": 0.015198023058474064
+      },
+      {
+        "type": "Microglia",
+        "markers": "C1QA,C1QB,CX3CR1,TMEM119",
+        "mean_in_pred": 0.040255703032016754,
+        "mean_out_pred": 0.03151894733309746
+      },
+      {
+        "type": "Oligo",
+        "markers": "MBP,PLP1,MOG",
+        "mean_in_pred": 1.9868335723876953,
+        "mean_out_pred": 0.21052975952625275
+      },
+      {
+        "type": "SUB",
+        "markers": "DNER,TPBG",
+        "mean_in_pred": 1.0076923370361328,
+        "mean_out_pred": 0.4575231373310089
+      }
+    ],
+    "ref_holdout": {
+      "accuracy": 0.8857142857142857,
+      "macro_f1": 0.8835727960151477
+    }
+  },
+  {
+    "dataset": "slideseqv2",
+    "n_ref": 9978,
+    "n_query": 28000,
+    "n_types": 16,
+    "types": [
+      "Astrocyte",
+      "CA1",
+      "CA2",
+      "CA3",
+      "DG",
+      "Endothelial",
+      "Entorhinal",
+      "Ependymal",
+      "Interneuron",
+      "Microglia",
+      "Mural",
+      "Neurogenesis",
+      "OPC",
+      "Oligodendrocyte",
+      "Other_neuron",
+      "Subiculum"
+    ],
+    "query_correct": "mnn",
+    "pred_counts": {
+      "CA1": 3455,
+      "Oligodendrocyte": 3150,
+      "Other_neuron": 2793,
+      "Astrocyte": 2718,
+      "CA3": 2284,
+      "Interneuron": 2279,
+      "Subiculum": 1834,
+      "Entorhinal": 1459,
+      "DG": 1402,
+      "Endothelial": 1319,
+      "Neurogenesis": 1118,
+      "OPC": 1038,
+      "Microglia": 1037,
+      "Mural": 830,
+      "CA2": 820,
+      "Ependymal": 464
+    },
+    "mean_entropy": 0.6581348204932194,
+    "mean_dissonance": 0.155535027384758,
+    "mean_p1": 0.7666658759117126,
+    "marker_check": [
+      {
+        "type": "Astrocyte",
+        "markers": "GJA1,AQP4,SLC1A2,ALDH1L1",
+        "mean_in_pred": 0.9575974941253662,
+        "mean_out_pred": 0.27531445026397705
+      },
+      {
+        "type": "CA1",
+        "markers": "FIBCD1,WFS1",
+        "mean_in_pred": 0.11562952399253845,
+        "mean_out_pred": 0.05084538459777832
+      },
+      {
+        "type": "CA2",
+        "markers": "AMIGO2,RGS14",
+        "mean_in_pred": 0.12073170393705368,
+        "mean_out_pred": 0.02886313386261463
+      },
+      {
+        "type": "CA3",
+        "markers": "PVRL3,BOK",
+        "mean_in_pred": 0.17403677105903625,
+        "mean_out_pred": 0.06589283049106598
+      },
+      {
+        "type": "DG",
+        "markers": "PROX1,DOCK10",
+        "mean_in_pred": 0.2685449421405792,
+        "mean_out_pred": 0.048067525029182434
+      },
+      {
+        "type": "Endothelial",
+        "markers": "FLT1,CLDN5,PECAM1",
+        "mean_in_pred": 0.11726055294275284,
+        "mean_out_pred": 0.005971789825707674
+      },
+      {
+        "type": "Entorhinal",
+        "markers": "SLC17A6,NELL1",
+        "mean_in_pred": 0.09492803364992142,
+        "mean_out_pred": 0.10284088551998138
+      },
+      {
+        "type": "Ependymal",
+        "markers": "FOXJ1,CFAP54",
+        "mean_in_pred": 0.32866379618644714,
+        "mean_out_pred": 0.006373474840074778
+      },
+      {
+        "type": "Interneuron",
+        "markers": "GAD1,GAD2,SLC32A1",
+        "mean_in_pred": 0.6561357378959656,
+        "mean_out_pred": 0.03305988386273384
+      },
+      {
+        "type": "Microglia",
+        "markers": "C1QA,C1QB,CX3CR1,TMEM119",
+        "mean_in_pred": 0.3522179424762726,
+        "mean_out_pred": 0.020871194079518318
+      },
+      {
+        "type": "Mural",
+        "markers": "RGS5,PDGFRB,ACTA2",
+        "mean_in_pred": 0.10522088408470154,
+        "mean_out_pred": 0.011507791467010975
+      },
+      {
+        "type": "Neurogenesis",
+        "markers": "DCX,TOP2A",
+        "mean_in_pred": 0.056797854602336884,
+        "mean_out_pred": 0.00667733047157526
+      },
+      {
+        "type": "OPC",
+        "markers": "PDGFRA,CSPG4,TNR",
+        "mean_in_pred": 0.21130380034446716,
+        "mean_out_pred": 0.028150729835033417
+      },
+      {
+        "type": "Oligodendrocyte",
+        "markers": "MBP,PLP1,MOG,MAG",
+        "mean_in_pred": 8.640317916870117,
+        "mean_out_pred": 0.8510664105415344
+      },
+      {
+        "type": "Subiculum",
+        "markers": "DNER,TPBG",
+        "mean_in_pred": 0.07442747801542282,
+        "mean_out_pred": 0.07085531204938889
+      }
+    ],
+    "rctd_all": {
+      "n": 28000,
+      "accuracy": 0.34075,
+      "balanced_accuracy": 0.3913252287343707,
+      "macro_f1": 0.24182810961626786,
+      "accuracy_shared_types": 0.34655479277904905,
+      "n_shared_types": 27531
+    },
+    "rctd_singlets": {
+      "n": 8143,
+      "accuracy": 0.5235171312783986,
+      "balanced_accuracy": 0.5029322351079504,
+      "macro_f1": 0.3568212649655944,
+      "accuracy_shared_types": 0.5283837382250868,
+      "n_shared_types": 8068
+    },
+    "ref_holdout": {
+      "accuracy": 0.7556596409055425,
+      "macro_f1": 0.6215891451333043
+    }
+  }
+]
