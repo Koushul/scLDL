@@ -1,5 +1,6 @@
 {
   "dataset": "visiumhd",
+  "model": "scldl",
   "n_ref": 9800,
   "n_query": 27939,
   "n_types": 14,
@@ -20,113 +21,125 @@
     "SUB"
   ],
   "query_correct": "mnn",
+  "spatial": "on",
   "pred_counts": {
-    "Astro": 6059,
-    "L2/3 IT CTX": 4231,
-    "L5/6 IT CTX": 2919,
-    "Oligo": 2557,
-    "L5 PT CTX": 2021,
-    "L6 CT CTX": 1994,
-    "CA": 1789,
-    "Microglia": 1447,
-    "L4/5 IT CTX": 1318,
-    "L6b CTX": 1225,
-    "L4 IT CTX": 1140,
-    "L5 IT CTX": 856,
-    "DG": 318,
-    "SUB": 65
+    "L2/3 IT CTX": 6036,
+    "Astro": 5908,
+    "L5/6 IT CTX": 3023,
+    "L5 PT CTX": 2981,
+    "L6 CT CTX": 2253,
+    "Oligo": 2247,
+    "CA": 1571,
+    "L4 IT CTX": 1060,
+    "L6b CTX": 1049,
+    "L4/5 IT CTX": 826,
+    "L5 IT CTX": 438,
+    "DG": 329,
+    "Microglia": 185,
+    "SUB": 33
   },
-  "mean_entropy": 0.7167636319385983,
-  "mean_dissonance": 0.17273283004760742,
-  "mean_p1": 0.7452152967453003,
+  "changed_frac": 0.4927162747414009,
+  "mean_entropy": 0.4872907920526527,
+  "mean_dissonance": 0.10052669048309326,
+  "mean_p1": 0.8532307744026184,
   "marker_check": [
     {
       "type": "Astro",
       "markers": "GJA1,AQP4,SLC1A2",
-      "mean_in_pred": 0.7316389083862305,
-      "mean_out_pred": 0.3547227382659912
+      "mean_in_pred": 0.722410261631012,
+      "mean_out_pred": 0.3597809076309204
     },
     {
       "type": "CA",
       "markers": "FIBCD1,NECTIN3,WFS1",
-      "mean_in_pred": 0.18986399471759796,
-      "mean_out_pred": 0.04982791468501091
+      "mean_in_pred": 0.23594315350055695,
+      "mean_out_pred": 0.0482402928173542
     },
     {
       "type": "DG",
       "markers": "PROX1,DOCK10",
-      "mean_in_pred": 2.572327136993408,
-      "mean_out_pred": 0.113410085439682
+      "mean_in_pred": 2.7811551094055176,
+      "mean_out_pred": 0.10994204878807068
     },
     {
       "type": "L2/3 IT CTX",
       "markers": "CUX2,SATB2",
-      "mean_in_pred": 0.07598676532506943,
-      "mean_out_pred": 0.06048591062426567
+      "mean_in_pred": 0.08242213726043701,
+      "mean_out_pred": 0.0574350543320179
     },
     {
       "type": "L4 IT CTX",
       "markers": "RORB",
-      "mean_in_pred": 0.04385964944958687,
-      "mean_out_pred": 0.04604649543762207
+      "mean_in_pred": 0.028301887214183807,
+      "mean_out_pred": 0.046653520315885544
     },
     {
       "type": "L4/5 IT CTX",
       "markers": "RORB,RPRM",
-      "mean_in_pred": 0.051213961094617844,
-      "mean_out_pred": 0.06061004474759102
+      "mean_in_pred": 0.056295398622751236,
+      "mean_out_pred": 0.06028473377227783
     },
     {
       "type": "L5 IT CTX",
       "markers": "DEPTOR",
-      "mean_in_pred": 0.004672897048294544,
-      "mean_out_pred": 0.005021600052714348
+      "mean_in_pred": 0.004566209856420755,
+      "mean_out_pred": 0.005017999559640884
     },
     {
       "type": "L5 PT CTX",
       "markers": "BCL6",
-      "mean_in_pred": 0.09302325546741486,
-      "mean_out_pred": 0.05181726813316345
+      "mean_in_pred": 0.0724589079618454,
+      "mean_out_pred": 0.052688516676425934
     },
     {
       "type": "L5/6 IT CTX",
       "markers": "DEPTOR",
-      "mean_in_pred": 0.00685166148468852,
-      "mean_out_pred": 0.0047961631789803505
+      "mean_in_pred": 0.003307972103357315,
+      "mean_out_pred": 0.005217530764639378
     },
     {
       "type": "L6 CT CTX",
       "markers": "FOXP2,SULF1",
-      "mean_in_pred": 0.16549648344516754,
-      "mean_out_pred": 0.04285989701747894
+      "mean_in_pred": 0.13892588019371033,
+      "mean_out_pred": 0.04395390301942825
     },
     {
       "type": "L6b CTX",
       "markers": "CCN2",
-      "mean_in_pred": 0.16734693944454193,
-      "mean_out_pred": 0.015198023058474064
+      "mean_in_pred": 0.1982840746641159,
+      "mean_out_pred": 0.014986984431743622
     },
     {
       "type": "Microglia",
       "markers": "C1QA,C1QB,CX3CR1,TMEM119",
-      "mean_in_pred": 0.040255703032016754,
-      "mean_out_pred": 0.03151894733309746
+      "mean_in_pred": 0.06891892105340958,
+      "mean_out_pred": 0.03172515705227852
     },
     {
       "type": "Oligo",
       "markers": "MBP,PLP1,MOG",
-      "mean_in_pred": 1.9868335723876953,
-      "mean_out_pred": 0.21052975952625275
+      "mean_in_pred": 2.2594571113586426,
+      "mean_out_pred": 0.2081192582845688
     },
     {
       "type": "SUB",
       "markers": "DNER,TPBG",
-      "mean_in_pred": 1.0076923370361328,
-      "mean_out_pred": 0.4575231373310089
+      "mean_in_pred": 0.7424242496490479,
+      "mean_out_pred": 0.4584677219390869
     }
   ],
+  "spatial_expr": {
+    "mean_same_neighbor_frac": 0.25321683287620544,
+    "isolated_frac": 0.2883782526217832,
+    "interior_frac": 0.09814238161709439
+  },
+  "spatial_scldl": {
+    "mean_same_neighbor_frac": 0.5313763618469238,
+    "isolated_frac": 0.055692759225455454,
+    "interior_frac": 0.32205877089373275
+  },
   "ref_holdout": {
-    "accuracy": 0.8857142857142857,
-    "macro_f1": 0.8835727960151477
+    "accuracy": 0.8814285714285715,
+    "macro_f1": 0.8793361696574771
   }
 }
