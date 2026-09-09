@@ -45,7 +45,7 @@ def _blob(n=320, n_genes=36, counts=(140, 120, 40, 20), seed=0):
     rng = np.random.default_rng(seed)
     y = np.concatenate([np.full(c, i) for i, c in enumerate(counts)])
     rng.shuffle(y)
-    means = rng.normal(size=(len(counts), n_genes)) * 2.8
+    means = rng.normal(size=(len(counts), n_genes)) * 1.7
     x = means[y] + rng.normal(scale=0.28, size=(len(y), n_genes))
     ad = AnnData(x.astype(np.float32))
     ad.obs["cell_type"] = np.array([f"type_{i}" for i in y])
@@ -131,9 +131,11 @@ def run_synthetic():
     rare = test.copy()
     x = np.asarray(rare.X, dtype=np.float32)
     y = rare.obs["cell_type"].to_numpy()
+    # Pull the rare type toward the majority type so unrestricted MNN can kidnap it.
+    maj = x[y == "type_0"].mean(axis=0)
     rare_mask = y == "type_3"
-    x[rare_mask] = x[rare_mask] * 0.55 + 6.5
-    x[~rare_mask] = x[~rare_mask] * 0.4 + 4.8
+    x = x * 0.55 + 5.2
+    x[rare_mask] = 0.35 * x[rare_mask] + 0.65 * (maj * 0.55 + 5.2)
     rare.X = x
     for row in _ablate(pipe, rare, "cell_type"):
         row["setting"] = "rare_type_shift"

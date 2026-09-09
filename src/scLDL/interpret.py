@@ -94,16 +94,22 @@ def graph_refine(p, z, vacuity=None, xy=None, n_neighbors: int = 15, n_iter: int
     if n < 4:
         return p
     z = np.asarray(z, dtype=np.float64)
-    k = max(2, min(int(n_neighbors) + 1, n))
-    dist, idx = NearestNeighbors(n_neighbors=k).fit(z).kneighbors(z)
-    sigma = np.maximum(dist[:, -1], 1e-8)
-    w = np.exp(-(dist * dist) / np.maximum(sigma[:, None] ** 2, 1e-12))
-    w[:, 0] = 0.0
     if xy is not None:
         xy = np.asarray(xy, dtype=np.float64)
-        dxy = np.sqrt(((xy[idx] - xy[:, None, :]) ** 2).sum(axis=2))
-        tau = np.maximum(np.median(dxy[:, 1:], axis=1, keepdims=True), 1e-8)
-        w = w * np.exp(-(dxy * dxy) / np.maximum(tau ** 2, 1e-12))
+        k = max(2, min(int(n_neighbors) + 1, n))
+        dist, idx = NearestNeighbors(n_neighbors=k).fit(xy).kneighbors(xy)
+        sigma = np.maximum(dist[:, -1], 1e-8)
+        w = np.exp(-(dist * dist) / np.maximum(sigma[:, None] ** 2, 1e-12))
+        w[:, 0] = 0.0
+        dz = np.sqrt(((z[idx] - z[:, None, :]) ** 2).sum(axis=2))
+        tau = np.maximum(np.median(dz[:, 1:], axis=1, keepdims=True), 1e-8)
+        w = w * (0.35 + 0.65 * np.exp(-(dz * dz) / np.maximum(tau ** 2, 1e-12)))
+        w[:, 0] = 0.0
+    else:
+        k = max(2, min(int(n_neighbors) + 1, n))
+        dist, idx = NearestNeighbors(n_neighbors=k).fit(z).kneighbors(z)
+        sigma = np.maximum(dist[:, -1], 1e-8)
+        w = np.exp(-(dist * dist) / np.maximum(sigma[:, None] ** 2, 1e-12))
         w[:, 0] = 0.0
     conf = p.max(axis=1)
     labels = p.argmax(axis=1)
