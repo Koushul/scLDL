@@ -48,6 +48,27 @@ def test_mnn_recovers_global_shift():
     assert fixed < 0.35 * raw
 
 
+def test_mnn_matches_mutual_neighbor_mean():
+    rng = np.random.default_rng(4)
+    ref = rng.normal(size=(40, 6))
+    query = ref[:12] + rng.normal(scale=0.05, size=(12, 6))
+    mapped = mnn_map(query, ref, n_neighbors=8, shrink=0.85)
+    from sklearn.neighbors import NearestNeighbors
+
+    k = 8
+    q2r = NearestNeighbors(n_neighbors=k).fit(ref).kneighbors(query, return_distance=False)
+    r2q = NearestNeighbors(n_neighbors=k).fit(query).kneighbors(ref, return_distance=False)
+    r2q_sets = [set(row.tolist()) for row in r2q]
+    expected = np.empty_like(query)
+    for i in range(len(query)):
+        partners = [int(j) for j in q2r[i] if i in r2q_sets[int(j)]]
+        if not partners:
+            partners = [int(j) for j in q2r[i][:3]]
+        target = ref[partners].mean(axis=0)
+        expected[i] = query[i] + 0.85 * (target - query[i])
+    np.testing.assert_allclose(mapped, expected.astype(np.float32), rtol=1e-5, atol=1e-5)
+
+
 def test_query_label_transfer_and_pairs():
     rng = np.random.default_rng(0)
     y = rng.integers(0, 3, size=40)

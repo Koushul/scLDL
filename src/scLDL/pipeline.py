@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import numpy as np
 
-from scLDL.data import align_to_genes, labels_to_onehot, looks_like_counts, preprocess_reference, to_dense
+from scLDL.data import align_matrix, labels_to_onehot, log1p_normalize, looks_like_counts, preprocess_reference, to_dense
 from scLDL.device import resolve_device
 from scLDL.embedding import ReferenceEmbedding
 from scLDL.interpret import (
@@ -84,7 +84,6 @@ class AnnotationPipeline:
         self.var_names_ = None
         self.classes_ = None
         self.label_key_ = None
-        self.log_normalized_ = False
         self.Y_ref_ = None
         self.uses_embedding_ = model in {"scldl", "interpretable", "state_concentration"}
         self._ref_had_batches = False
@@ -101,7 +100,6 @@ class AnnotationPipeline:
     def fit(self, adata, label_key: str = "cell_type", batch_key: str | None = None):
         if label_key not in adata.obs:
             raise KeyError(f"{label_key!r} not found in adata.obs")
-        self.log_normalized_ = looks_like_counts(adata.X)
         extra = None
         if self.markers:
             extra = sorted({g for gs in self.markers.values() for g in gs})
@@ -188,16 +186,20 @@ class AnnotationPipeline:
             raise RuntimeError("Call fit() before predict().")
 
     def _prepare_query(self, adata):
-        import scanpy as sc
-
-        ad = adata.copy()
-        if self.log_normalized_ and looks_like_counts(ad.X):
-            sc.pp.normalize_total(ad, target_sum=1e4)
-            sc.pp.log1p(ad)
-        query, n_overlap = align_to_genes(ad, self.var_names_)
+        X = adata.X
+        if looks_like_counts(X):
+            X = log1p_normalize(X)
+        x, n_overlap = align_matrix(X, adata.var_names, self.var_names_)
         if self.verbose:
             print(f"Aligned query genes: {n_overlap}/{len(self.var_names_)} overlap")
-        return query, to_dense(query.X)
+        return x
+
+    def _infer(self, adata):
+        self._check_fitted()
+        x = self._prepare_query(adata)
+        parts = self._predict_parts(x)
+        dist = self._apply_spatial(parts["blended"], adata, parts["x_model"])
+        return parts, dist
 
     def _model_inputs(self, x_log):
         if self.embed_ is None:
@@ -253,24 +255,18 @@ class AnnotationPipeline:
             return dist
         self.last_spatial_ = "on"
         k = 8 if self.task == "type" else 12
-        n_iter = 3 if self.task == "type" else 4
+        n_iter = 2 if self.task == "type" else 4
         return spatial_refine(dist, xy, z=z, n_neighbors=k, n_iter=n_iter, task=self.task)
 
     def predict_distribution(self, adata):
-        self._check_fitted()
-        _, x = self._prepare_query(adata)
-        parts = self._predict_parts(x)
-        return self._apply_spatial(parts["blended"], adata, parts["x_model"])
+        _, dist = self._infer(adata)
+        return dist
 
     def annotate(self, adata, obsm_key: str = "X_scldl", obs_key: str = "scldl_pred", copy: bool = False):
-        self._check_fitted()
         ad = adata.copy() if copy else adata
-        _, x = self._prepare_query(ad)
-        parts = self._predict_parts(x)
+        parts, dist = self._infer(ad)
         expr = parts["blended"]
-        dist = self._apply_spatial(expr, ad, parts["x_model"])
         ad.obsm[obsm_key] = dist
-        ad.obsm["X_scldl_expr"] = expr
         ad.obsm["X_scldl_model"] = parts["model"]
         if parts["knn"] is not None:
             ad.obsm["X_scldl_knn"] = parts["knn"]
@@ -279,6 +275,7 @@ class AnnotationPipeline:
             ad.obsm["X_scldl_residual"] = residual_mass(parts["model"], parts["marker"], parts["knn"])
         ad.obs[obs_key] = self.classes_[dist.argmax(axis=1)]
         if self.last_spatial_ == "on":
+            ad.obsm["X_scldl_expr"] = expr
             ad.obs["scldl_pred_expr"] = self.classes_[expr.argmax(axis=1)]
         ad.obs["scldl_uncertainty"] = parts["vacuity"]
         ad.obs["scldl_entropy"] = entropy(dist)
@@ -295,9 +292,7 @@ class AnnotationPipeline:
         key = label_key or self.label_key_
         if key not in adata.obs:
             raise KeyError(f"{key!r} not found in adata.obs")
-        _, x = self._prepare_query(adata)
-        parts = self._predict_parts(x)
-        dist = self._apply_spatial(parts["blended"], adata, parts["x_model"])
+        parts, dist = self._infer(adata)
         y_true = np.asarray(adata.obs[key].astype(str))
         y_pred = self.classes_[dist.argmax(axis=1)]
         metrics = classification_metrics(y_true, y_pred)

@@ -111,7 +111,7 @@ class InterpretableLE(StateConcentrationLE):
                     man_term = self._manifold(h0.detach(), mean0, P[batch_i][:, batch_i])
                 if mixed:
                     batch_x, batch_l = mixup_batch(batch_x, batch_l, self.mixup_alpha)
-                h, _, alpha = self.forward(batch_x, c_fwd if not mixed else c_fwd)
+                h, _, alpha = self.forward(batch_x, c_fwd)
                 mean = alpha / torch.sum(alpha, dim=1, keepdim=True)
                 weights = self._sample_weights(batch_l)
                 s = torch.sum(alpha, dim=1, keepdim=True)

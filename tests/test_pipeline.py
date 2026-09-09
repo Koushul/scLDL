@@ -42,3 +42,45 @@ def test_gene_alignment_fills_missing():
     assert aligned.n_vars == adata.n_vars
     assert overlap == 10
     assert np.allclose(aligned.X[:, 10:], 0)
+    assert np.allclose(aligned.X[:, :10], np.asarray(query.X))
+
+
+def test_gene_alignment_uses_first_duplicate():
+    from scipy import sparse
+
+    x = np.arange(6, dtype=np.float32).reshape(2, 3)
+    ad = AnnData(sparse.csr_matrix(x))
+    ad.var_names = ["A", "A", "B"]
+    aligned, overlap = align_to_genes(ad, ["B", "A", "C"])
+    assert overlap == 2
+    np.testing.assert_allclose(aligned.X, np.array([[2, 0, 0], [5, 3, 0]], dtype=np.float32))
+
+
+def test_looks_like_counts_uses_global_max():
+    from scipy import sparse
+
+    from scLDL.data import looks_like_counts
+
+    x = np.zeros((40, 4), dtype=np.float32)
+    x[35, 1] = 80.0
+    assert looks_like_counts(sparse.csr_matrix(x))
+    assert looks_like_counts(x)
+    logx = np.log1p(np.abs(np.random.default_rng(0).normal(size=(40, 4)).astype(np.float32)))
+    assert not looks_like_counts(logx)
+
+
+def test_log1p_normalize_matches_scanpy():
+    import scanpy as sc
+    from scipy import sparse
+
+    from scLDL.data import log1p_normalize, to_dense
+
+    rng = np.random.default_rng(0)
+    counts = rng.integers(0, 30, size=(12, 8)).astype(np.float32)
+    ad = AnnData(sparse.csr_matrix(counts))
+    sc.pp.normalize_total(ad, target_sum=1e4)
+    sc.pp.log1p(ad)
+    got = log1p_normalize(sparse.csr_matrix(counts))
+    np.testing.assert_allclose(to_dense(got), to_dense(ad.X), rtol=1e-5, atol=1e-5)
+    dense = log1p_normalize(counts)
+    np.testing.assert_allclose(dense, to_dense(ad.X), rtol=1e-5, atol=1e-5)

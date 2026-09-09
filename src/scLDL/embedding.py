@@ -82,12 +82,13 @@ def mnn_map(query, ref, n_neighbors: int = 20, shrink: float = 0.85):
     k = max(1, min(int(n_neighbors), len(ref), len(query)))
     idx_q2r = NearestNeighbors(n_neighbors=k).fit(ref).kneighbors(query, return_distance=False)
     idx_r2q = NearestNeighbors(n_neighbors=k).fit(query).kneighbors(ref, return_distance=False)
-    r2q = [set(row.tolist()) for row in idx_r2q]
-    mapped = np.empty_like(query)
-    for i in range(len(query)):
-        partners = [int(j) for j in idx_q2r[i] if i in r2q[int(j)]]
-        if not partners:
-            partners = [int(j) for j in idx_q2r[i][: min(3, k)]]
-        target = ref[partners].mean(axis=0)
-        mapped[i] = query[i] + shrink * (target - query[i])
-    return mapped.astype(np.float32)
+    nq = query.shape[0]
+    mutual = (idx_r2q[idx_q2r] == np.arange(nq)[:, None, None]).any(axis=2)
+    w = mutual.astype(np.float64)
+    none = w.sum(axis=1) == 0
+    if np.any(none):
+        w[none] = 0.0
+        w[none, : min(3, k)] = 1.0
+    w /= np.clip(w.sum(axis=1, keepdims=True), 1e-12, None)
+    target = (w[..., None] * ref[idx_q2r]).sum(axis=1)
+    return (query + shrink * (target - query)).astype(np.float32)

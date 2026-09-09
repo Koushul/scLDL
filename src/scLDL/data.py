@@ -5,17 +5,52 @@ from scipy import sparse
 def to_dense(x) -> np.ndarray:
     if sparse.issparse(x):
         return np.asarray(x.toarray(), dtype=np.float32)
-    return np.asarray(x, dtype=np.float32)
+    arr = np.asarray(x)
+    if arr.dtype == np.float32:
+        return arr
+    return np.asarray(arr, dtype=np.float32)
 
 
 def looks_like_counts(x) -> bool:
-    sample = to_dense(x[: min(32, x.shape[0])])
+    n = int(x.shape[0])
+    if n == 0 or int(x.shape[1]) == 0:
+        return False
+    if sparse.issparse(x):
+        mx = x.max()
+        if sparse.issparse(mx):
+            mx = mx.toarray().ravel()[0]
+        mx = float(mx)
+        sample = to_dense(x[: min(32, n)])
+    else:
+        arr = np.asarray(x)
+        mx = float(np.nanmax(arr))
+        sample = np.asarray(arr[: min(32, n)], dtype=np.float64)
     if sample.size == 0:
         return False
-    if np.nanmax(sample) > 20:
+    if mx > 20:
         return True
     frac_int = np.mean(np.abs(sample - np.round(sample)) < 1e-6)
     return bool(frac_int > 0.9)
+
+
+def log1p_normalize(X, target_sum: float = 1e4):
+    """Library-size normalize then log1p, matching scanpy's default path."""
+    if sparse.issparse(X):
+        X = X.tocsr(copy=True).astype(np.float64, copy=False)
+        counts = np.asarray(X.sum(axis=1)).ravel()
+        scale = np.ones(counts.shape[0], dtype=np.float64)
+        nz = counts > 0
+        scale[nz] = target_sum / counts[nz]
+        X = X.multiply(scale[:, np.newaxis]).tocsr()
+        if X.nnz:
+            X.data = np.log1p(X.data)
+        return X.astype(np.float32)
+    X = np.array(X, dtype=np.float64, copy=True)
+    counts = X.sum(axis=1)
+    scale = np.ones(len(counts), dtype=np.float64)
+    nz = counts > 0
+    scale[nz] = target_sum / counts[nz]
+    return np.log1p(X * scale[:, None]).astype(np.float32)
 
 
 def preprocess_reference(adata, n_top_genes: int = 2000, copy: bool = True, always_include=None):
@@ -23,36 +58,44 @@ def preprocess_reference(adata, n_top_genes: int = 2000, copy: bool = True, alwa
 
     ad = adata.copy() if copy else adata
     if looks_like_counts(ad.X):
-        sc.pp.normalize_total(ad, target_sum=1e4)
-        sc.pp.log1p(ad)
+        ad.X = log1p_normalize(ad.X)
     if n_top_genes and ad.n_vars > n_top_genes:
         sc.pp.highly_variable_genes(ad, n_top_genes=n_top_genes, subset=False)
-        keep = ad.var["highly_variable"].copy()
+        keep = ad.var["highly_variable"].to_numpy()
         if always_include is not None:
-            for g in always_include:
-                if g in keep.index:
-                    keep.loc[g] = True
+            keep = keep | np.isin(ad.var_names.astype(str), np.asarray(list(always_include), dtype=str))
         ad = ad[:, keep].copy()
     return ad
 
 
-def align_to_genes(adata, var_names, copy: bool = True):
-    import anndata as ad_mod
-    import pandas as pd
-
-    ad = adata.copy() if copy else adata
-    query_names = pd.Index(ad.var_names.astype(str))
-    target = pd.Index(np.asarray(var_names).astype(str))
-    overlap = int(target.isin(query_names).sum())
+def align_matrix(X, query_names, target_names):
+    query_names = np.asarray(query_names).astype(str)
+    target = np.asarray(target_names).astype(str)
+    lookup = {}
+    for i, g in enumerate(query_names):
+        if g not in lookup:
+            lookup[g] = i
+    src = np.array([lookup.get(g, -1) for g in target], dtype=np.intp)
+    overlap = int((src >= 0).sum())
     if overlap == 0:
         raise ValueError("No overlapping genes between reference and query.")
+    x = np.zeros((X.shape[0], len(target)), dtype=np.float32)
+    hit = src >= 0
+    cols = src[hit]
+    if sparse.issparse(X):
+        x[:, hit] = to_dense(X.tocsc()[:, cols])
+    else:
+        x[:, hit] = np.asarray(X[:, cols], dtype=np.float32)
+    return x, overlap
 
-    dense = pd.DataFrame(to_dense(ad.X), columns=query_names)
-    x = dense.reindex(columns=target, fill_value=0.0).to_numpy(dtype=np.float32)
 
-    out = ad_mod.AnnData(x, obs=ad.obs.copy())
-    out.var_names = target
-    out.obs_names = ad.obs_names
+def align_to_genes(adata, var_names, copy: bool = True):
+    import anndata as ad_mod
+
+    x, overlap = align_matrix(adata.X, adata.var_names, var_names)
+    out = ad_mod.AnnData(x, obs=adata.obs.copy() if copy else adata.obs)
+    out.var_names = np.asarray(var_names).astype(str)
+    out.obs_names = adata.obs_names
     return out, overlap
 
 

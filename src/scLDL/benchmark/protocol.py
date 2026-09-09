@@ -6,7 +6,7 @@ import numpy as np
 from sklearn.model_selection import train_test_split
 from sklearn.preprocessing import StandardScaler
 
-from scLDL.data import align_to_genes, looks_like_counts, preprocess_reference, to_dense
+from scLDL.data import align_to_genes, log1p_normalize, looks_like_counts, preprocess_reference, to_dense
 
 
 @dataclass
@@ -40,12 +40,9 @@ def flip_labels(y, rate: float, rng: np.random.Generator):
 
 
 def _normalize_if_counts(adata):
-    import scanpy as sc
-
     ad = adata.copy()
     if looks_like_counts(ad.X):
-        sc.pp.normalize_total(ad, target_sum=1e4)
-        sc.pp.log1p(ad)
+        ad.X = log1p_normalize(ad.X)
         return ad, True
     return ad, False
 

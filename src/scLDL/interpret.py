@@ -65,7 +65,7 @@ def top2_pairs(p, classes):
     order = np.argsort(-p, axis=1)
     i0 = order[:, 0]
     i1 = order[:, 1] if p.shape[1] > 1 else i0
-    names = np.array([f"{classes[a]}|{classes[b]}" for a, b in zip(i0, i1)])
+    names = np.char.add(np.char.add(classes[i0], "|"), classes[i1])
     mass = np.stack([p[np.arange(len(p)), i0], p[np.arange(len(p)), i1]], axis=1)
     return names, mass.astype(np.float32)
 

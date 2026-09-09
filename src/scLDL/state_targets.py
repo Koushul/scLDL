@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import numpy as np
+from scipy import sparse
 from sklearn.decomposition import PCA
 from sklearn.neighbors import NearestNeighbors
 
@@ -13,14 +14,17 @@ def _row_softmax(x, temperature: float = 1.0):
 
 
 def marker_score_matrix(expr, gene_names, markers: dict[str, list[str]], classes):
+    from scLDL.data import to_dense
+
     names = np.asarray(gene_names).astype(str)
     index = {g: i for i, g in enumerate(names)}
-    scores = np.zeros((expr.shape[0], len(classes)), dtype=np.float64)
+    x = np.asarray(to_dense(expr), dtype=np.float64)
+    scores = np.zeros((x.shape[0], len(classes)), dtype=np.float64)
     for k, cls in enumerate(classes):
         genes = [g for g in markers.get(cls, []) if g in index]
         if not genes:
             continue
-        cols = np.stack([np.asarray(expr[:, index[g]], dtype=np.float64) for g in genes], axis=1)
+        cols = x[:, [index[g] for g in genes]]
         mu = cols.mean(axis=0)
         sd = cols.std(axis=0)
         sd[sd < 1e-6] = 1.0
@@ -44,6 +48,30 @@ def _embedding(X, n_pcs: int | None):
     return PCA(n_components=n_comp, random_state=0).fit_transform(X)
 
 
+def _row_normalize_csr(A):
+    A = A.tocsr()
+    deg = np.asarray(A.sum(axis=1)).ravel()
+    inv = 1.0 / np.clip(deg, 1e-12, None)
+    return A.multiply(inv[:, np.newaxis]).tocsr()
+
+
+def _knn_affinity_csr(Z, n_neighbors: int, metric: str, self_tuning: bool):
+    n = Z.shape[0]
+    k = max(2, min(int(n_neighbors) + 1, n))
+    dist, idx = NearestNeighbors(n_neighbors=k, metric=metric).fit(Z).kneighbors(Z)
+    dist, idx = dist[:, 1:], idx[:, 1:]
+    rows = np.repeat(np.arange(n), idx.shape[1])
+    js = idx.ravel()
+    d = dist.ravel()
+    if self_tuning:
+        sigma = np.maximum(dist[:, -1], 1e-8)
+        aff = np.exp(-(d * d) / np.maximum(sigma[rows] * sigma[js], 1e-12))
+    else:
+        sigma = np.median(dist) + 1e-6
+        aff = np.exp(-(d * d) / (2.0 * sigma * sigma))
+    return sparse.csr_matrix((aff, (rows, js)), shape=(n, n))
+
+
 def probabilistic_neighbors(
     X,
     n_neighbors: int = 30,
@@ -57,45 +85,31 @@ def probabilistic_neighbors(
     and the graph is symmetrized with the UMAP fuzzy union
     P_ij = P_j|i + P_i|j - P_j|i P_i|j before a final random-walk normalize.
     """
+    S = _fuzzy_knn_graph(X, n_neighbors=n_neighbors, n_pcs=n_pcs, metric=metric)
+    return np.asarray(S.toarray(), dtype=np.float64)
+
+
+def _fuzzy_knn_graph(
+    X,
+    n_neighbors: int = 30,
+    n_pcs: int | None = 40,
+    metric: str = "euclidean",
+):
     Z = _embedding(X, n_pcs)
-    n = Z.shape[0]
-    k = max(2, min(int(n_neighbors) + 1, n))
-    nn = NearestNeighbors(n_neighbors=k, metric=metric)
-    nn.fit(Z)
-    dist, idx = nn.kneighbors(Z)
-    dist, idx = dist[:, 1:], idx[:, 1:]
-    sigma = np.maximum(dist[:, -1], 1e-8)
-
-    A = np.zeros((n, n), dtype=np.float64)
-    rows = np.repeat(np.arange(n), idx.shape[1])
-    js = idx.ravel()
-    d = dist.ravel()
-    aff = np.exp(-(d * d) / np.maximum(sigma[rows] * sigma[js], 1e-12))
-    A[rows, js] = aff
-
-    P = A / np.clip(A.sum(axis=1, keepdims=True), 1e-12, None)
-    P_sym = P + P.T - P * P.T
-    np.fill_diagonal(P_sym, 0.0)
-    S = P_sym / np.clip(P_sym.sum(axis=1, keepdims=True), 1e-12, None)
-    return S.astype(np.float64)
+    A = _knn_affinity_csr(Z, n_neighbors, metric, self_tuning=True)
+    P = _row_normalize_csr(A)
+    PT = P.transpose().tocsr()
+    P_sym = P + PT - P.multiply(PT)
+    P_sym.setdiag(0.0)
+    P_sym.eliminate_zeros()
+    return _row_normalize_csr(P_sym)
 
 
 def _global_rbf_neighbors(X, n_neighbors: int):
     X = np.asarray(X, dtype=np.float64)
-    n = X.shape[0]
-    k = max(2, min(int(n_neighbors) + 1, n))
-    nn = NearestNeighbors(n_neighbors=k, metric="euclidean")
-    nn.fit(X)
-    dist, idx = nn.kneighbors(X)
-    dist, idx = dist[:, 1:], idx[:, 1:]
-    sigma = np.median(dist) + 1e-6
-    W = np.exp(-(dist**2) / (2 * sigma**2))
-    A = np.zeros((n, n), dtype=np.float64)
-    rows = np.repeat(np.arange(n), idx.shape[1])
-    A[rows, idx.ravel()] = W.ravel()
+    A = _knn_affinity_csr(X, n_neighbors, "euclidean", self_tuning=False)
     A = 0.5 * (A + A.T)
-    deg = A.sum(axis=1, keepdims=True)
-    return A / np.clip(deg, 1e-12, None)
+    return _row_normalize_csr(A)
 
 
 def knn_smooth_labels(
@@ -112,7 +126,7 @@ def knn_smooth_labels(
     """Inductive graph smoothing on the training set only."""
     Y = np.asarray(Y, dtype=np.float64)
     if method == "adaptive":
-        S = probabilistic_neighbors(X, n_neighbors=n_neighbors, n_pcs=n_pcs, metric=metric)
+        S = _fuzzy_knn_graph(X, n_neighbors=n_neighbors, n_pcs=n_pcs, metric=metric)
     elif method == "global_rbf":
         S = _global_rbf_neighbors(X, n_neighbors=n_neighbors)
     else:
@@ -124,7 +138,8 @@ def knn_smooth_labels(
         D = D / np.clip(D.sum(axis=1, keepdims=True), 1e-12, None)
     D = D.astype(np.float32)
     if return_graph:
-        return D, S.astype(np.float32)
+        graph = S.toarray() if sparse.issparse(S) else S
+        return D, np.asarray(graph, dtype=np.float32)
     return D
 
 

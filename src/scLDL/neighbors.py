@@ -18,8 +18,7 @@ def query_to_ref_weights(X_query, X_ref, n_neighbors: int = 30):
 
 def transfer_labels(Y_ref, weights, idx):
     Y_ref = np.asarray(Y_ref, dtype=np.float64)
-    picked = Y_ref[idx]
-    return np.einsum("qk,qkc->qc", weights, picked).astype(np.float32)
+    return (np.asarray(weights, dtype=np.float64)[..., None] * Y_ref[idx]).sum(axis=1).astype(np.float32)
 
 
 def query_label_transfer(X_query, X_ref, Y_ref, n_neighbors: int = 30):

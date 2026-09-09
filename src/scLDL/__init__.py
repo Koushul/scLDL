@@ -14,9 +14,11 @@ from scLDL.models import (
     InterpretableLE,
 )
 from scLDL.pipeline import AnnotationPipeline
+from scLDL.spatial import try_spatial_xy
 
 __all__ = [
     "AnnotationPipeline",
+    "try_spatial_xy",
     "MLPBaseline",
     "LIBLE",
     "LEVI",
