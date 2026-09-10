@@ -1,0 +1,169 @@
+{
+  "dataset": "E28S MC38 spatial (full edge+core)",
+  "source": "/ix1/ylee/kor11/tools/hypoxia_fronts/data/E28S.h5ad",
+  "label_key": "cell_type",
+  "n_cells": 3516,
+  "n_types": 17,
+  "types": [
+    "CD4_T",
+    "CD8_T",
+    "CD8_exhausted",
+    "DN_T",
+    "Fibroblast",
+    "Mac_C1q",
+    "Mac_Il1b",
+    "Mac_MHCII",
+    "Mac_Spp1",
+    "Monocyte",
+    "NK",
+    "Neutrophil",
+    "Treg",
+    "Tumor",
+    "Tumor_proliferating",
+    "cDC",
+    "gdT"
+  ],
+  "slides": {
+    "edge": 2404,
+    "core": 1112
+  },
+  "train": "all cells",
+  "spatial": "off",
+  "accuracy": 0.9195108077360638,
+  "mean_entropy": 0.27834585309028625,
+  "mean_vacuity": 0.026839394122362137,
+  "mean_p1": 0.933505654335022,
+  "per_type": {
+    "CD4_T": {
+      "n": 10,
+      "accuracy": 0.9,
+      "mean_entropy": 0.40281039476394653,
+      "mean_vacuity": 0.020412269979715347,
+      "mean_p1": 0.8936346173286438
+    },
+    "CD8_T": {
+      "n": 29,
+      "accuracy": 1.0,
+      "mean_entropy": 0.27785733342170715,
+      "mean_vacuity": 0.023318501189351082,
+      "mean_p1": 0.9561404585838318
+    },
+    "CD8_exhausted": {
+      "n": 113,
+      "accuracy": 1.0,
+      "mean_entropy": 0.14641278982162476,
+      "mean_vacuity": 0.017346639186143875,
+      "mean_p1": 0.9797415137290955
+    },
+    "DN_T": {
+      "n": 18,
+      "accuracy": 1.0,
+      "mean_entropy": 0.2655472755432129,
+      "mean_vacuity": 0.02105480246245861,
+      "mean_p1": 0.9571757912635803
+    },
+    "Fibroblast": {
+      "n": 51,
+      "accuracy": 1.0,
+      "mean_entropy": 0.14658662676811218,
+      "mean_vacuity": 0.017847372218966484,
+      "mean_p1": 0.9799354672431946
+    },
+    "Mac_C1q": {
+      "n": 126,
+      "accuracy": 0.9920634920634921,
+      "mean_entropy": 0.2392454445362091,
+      "mean_vacuity": 0.02430126443505287,
+      "mean_p1": 0.9580044150352478
+    },
+    "Mac_Il1b": {
+      "n": 28,
+      "accuracy": 1.0,
+      "mean_entropy": 0.38010331988334656,
+      "mean_vacuity": 0.030454246327280998,
+      "mean_p1": 0.9297547936439514
+    },
+    "Mac_MHCII": {
+      "n": 1397,
+      "accuracy": 0.8403722261989979,
+      "mean_entropy": 0.37335094809532166,
+      "mean_vacuity": 0.034730199724435806,
+      "mean_p1": 0.9009107351303101
+    },
+    "Mac_Spp1": {
+      "n": 18,
+      "accuracy": 1.0,
+      "mean_entropy": 0.3416286110877991,
+      "mean_vacuity": 0.0220807995647192,
+      "mean_p1": 0.9358147382736206
+    },
+    "Monocyte": {
+      "n": 425,
+      "accuracy": 0.9176470588235294,
+      "mean_entropy": 0.38890737295150757,
+      "mean_vacuity": 0.027455037459731102,
+      "mean_p1": 0.8847950100898743
+    },
+    "NK": {
+      "n": 36,
+      "accuracy": 1.0,
+      "mean_entropy": 0.1949881911277771,
+      "mean_vacuity": 0.02671993523836136,
+      "mean_p1": 0.9732341766357422
+    },
+    "Neutrophil": {
+      "n": 414,
+      "accuracy": 1.0,
+      "mean_entropy": 0.12547336518764496,
+      "mean_vacuity": 0.017003577202558517,
+      "mean_p1": 0.9831483364105225
+    },
+    "Treg": {
+      "n": 96,
+      "accuracy": 0.8854166666666666,
+      "mean_entropy": 0.2303127497434616,
+      "mean_vacuity": 0.019109295681118965,
+      "mean_p1": 0.9456265568733215
+    },
+    "Tumor": {
+      "n": 34,
+      "accuracy": 1.0,
+      "mean_entropy": 0.1466580331325531,
+      "mean_vacuity": 0.016518430784344673,
+      "mean_p1": 0.9800605773925781
+    },
+    "Tumor_proliferating": {
+      "n": 429,
+      "accuracy": 0.9976689976689976,
+      "mean_entropy": 0.14504244923591614,
+      "mean_vacuity": 0.01975741982460022,
+      "mean_p1": 0.9795899391174316
+    },
+    "cDC": {
+      "n": 287,
+      "accuracy": 0.9616724738675958,
+      "mean_entropy": 0.18792368471622467,
+      "mean_vacuity": 0.023526540026068687,
+      "mean_p1": 0.9698652029037476
+    },
+    "gdT": {
+      "n": 5,
+      "accuracy": 1.0,
+      "mean_entropy": 0.3528817296028137,
+      "mean_vacuity": 0.022679541260004044,
+      "mean_p1": 0.9341655969619751
+    }
+  },
+  "per_slide": {
+    "edge": {
+      "n": 2404,
+      "accuracy": 0.9267886855241264,
+      "mean_entropy": 0.2746902406215668
+    },
+    "core": {
+      "n": 1112,
+      "accuracy": 0.9037769784172662,
+      "mean_entropy": 0.2862488329410553
+    }
+  }
+}
