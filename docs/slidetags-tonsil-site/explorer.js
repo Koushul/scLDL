@@ -115,12 +115,19 @@ function drawMap() {
   const overlay = document.getElementById("overlay");
   overlay.width = canvas.width;
   overlay.height = canvas.height;
+  overlay.style.width = cssW + "px";
+  overlay.style.height = cssH + "px";
   const ctx = canvas.getContext("2d");
   ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
   ctx.fillStyle = "#f3efe6";
   ctx.fillRect(0, 0, cssW, cssH);
   const view = layout(state.vis, cssW, cssH, 16);
   state.view = { ...view, cssW, cssH, dpr };
+  if (!state.vis.length || !isFinite(view.s)) {
+    drawOverlay();
+    drawLegend();
+    return;
+  }
   const chosen = new Set(state.selected);
   for (const i of state.vis) {
     const [px, py] = toPx(view, ds.x[i], ds.y[i]);
@@ -163,7 +170,7 @@ function eventPos(ev) {
 
 function nearest(px, py) {
   const ds = state.ds, view = state.view;
-  let best = -1, bestD = 90;
+  let best = -1, bestD = 45 * 45;
   for (const i of state.vis) {
     const [x, y] = toPx(view, ds.x[i], ds.y[i]);
     const d = (x - px) ** 2 + (y - py) ** 2;
@@ -207,8 +214,8 @@ function showSelection() {
     document.getElementById("panel-title").textContent = "No cell selected";
     document.getElementById("panel-meta").textContent = "Click a well, or box-select a neighborhood.";
     document.getElementById("bars").innerHTML = '<p class="empty">The label distribution appears here.</p>';
-    document.getElementById("status").textContent = `${state.vis.length} wells on ${state.meta.slides[state.slide]}`;
     drawMap();
+    document.getElementById("status").textContent = `${state.vis.length} wells on ${state.meta.slides[state.slide]}`;
     return;
   }
   if (idx.length === 1) {
@@ -254,10 +261,11 @@ function fillMeta(meta) {
 }
 
 function bind() {
-  const canvas = document.getElementById("map");
+  const surface = document.getElementById("map-wrap");
   document.getElementById("slide").addEventListener("change", ev => {
     state.slide = Number(ev.target.value);
-    state.selected = [];
+    const vis = visible();
+    state.selected = vis.length ? [vis[Math.floor(vis.length / 2)]] : [];
     showSelection();
   });
   document.getElementById("color").addEventListener("change", ev => {
@@ -279,7 +287,7 @@ function bind() {
     state.box = null;
     showSelection();
   });
-  canvas.addEventListener("pointerdown", ev => {
+  surface.addEventListener("pointerdown", ev => {
     const [px, py] = eventPos(ev);
     if (state.mode === "click") {
       const i = nearest(px, py);
@@ -289,16 +297,16 @@ function bind() {
     }
     state.dragging = true;
     state.box = { x0: px, y0: py, x1: px, y1: py };
-    canvas.setPointerCapture(ev.pointerId);
+    surface.setPointerCapture(ev.pointerId);
     drawOverlay();
   });
-  canvas.addEventListener("pointermove", ev => {
+  surface.addEventListener("pointermove", ev => {
     if (!state.dragging || !state.box) return;
     const [px, py] = eventPos(ev);
     state.box.x1 = px; state.box.y1 = py;
     drawOverlay();
   });
-  canvas.addEventListener("pointerup", () => {
+  surface.addEventListener("pointerup", () => {
     if (!state.dragging || !state.box) return;
     state.dragging = false;
     const b = state.box;
@@ -318,6 +326,8 @@ fetch("explorer.json")
     state.ds = parseBin(buf);
     state.ds.types = meta.types;
     bind();
+    const vis = visible();
+    state.selected = vis.length ? [vis[Math.floor(vis.length / 2)]] : [];
     showSelection();
   })
   .catch(err => {
