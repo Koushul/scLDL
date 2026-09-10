@@ -1,0 +1,117 @@
+{
+  "dataset": "SpaceTravLR Slide-tags human tonsil (germinal center)",
+  "source": "/ix1/ylee/kor11/tools/SpaceTravLR/data/snrna_germinal_center.h5ad",
+  "label_key": "cell_type_2",
+  "n_cells": 1309,
+  "n_types": 11,
+  "types": [
+    "B Memory",
+    "B Naive",
+    "CD8 T",
+    "GC Dark Zone",
+    "GC Intermediate Zone",
+    "GC Light Zone",
+    "Tfh",
+    "Th1",
+    "Th2",
+    "Treg",
+    "non-Tfh CD4 T"
+  ],
+  "counts": {
+    "B Memory": 129,
+    "B Naive": 245,
+    "CD8 T": 64,
+    "GC Dark Zone": 209,
+    "GC Intermediate Zone": 179,
+    "GC Light Zone": 223,
+    "Tfh": 113,
+    "Th1": 21,
+    "Th2": 12,
+    "Treg": 62,
+    "non-Tfh CD4 T": 52
+  },
+  "oof_accuracy": 0.6745607333842628,
+  "mean_entropy": 0.6080718636512756,
+  "mean_vacuity": 0.04415163770318031,
+  "mean_p1": 0.7858933210372925,
+  "disagree_frac": 0.3254392666157372,
+  "per_type": {
+    "B Memory": {
+      "n": 129,
+      "accuracy": 0.7829457364341085,
+      "mean_entropy": 0.42559507489204407,
+      "mean_vacuity": 0.04648065194487572,
+      "mean_p1": 0.8990312814712524
+    },
+    "B Naive": {
+      "n": 245,
+      "accuracy": 0.8367346938775511,
+      "mean_entropy": 0.3692867159843445,
+      "mean_vacuity": 0.04328470677137375,
+      "mean_p1": 0.9090756177902222
+    },
+    "CD8 T": {
+      "n": 64,
+      "accuracy": 0.859375,
+      "mean_entropy": 0.4127572178840637,
+      "mean_vacuity": 0.03730896860361099,
+      "mean_p1": 0.8927334547042847
+    },
+    "GC Dark Zone": {
+      "n": 209,
+      "accuracy": 0.5645933014354066,
+      "mean_entropy": 0.8046162724494934,
+      "mean_vacuity": 0.04449724033474922,
+      "mean_p1": 0.6646002531051636
+    },
+    "GC Intermediate Zone": {
+      "n": 179,
+      "accuracy": 0.4748603351955307,
+      "mean_entropy": 0.8432624936103821,
+      "mean_vacuity": 0.0430133156478405,
+      "mean_p1": 0.6476450562477112
+    },
+    "GC Light Zone": {
+      "n": 223,
+      "accuracy": 0.5650224215246636,
+      "mean_entropy": 0.7848060727119446,
+      "mean_vacuity": 0.046575870364904404,
+      "mean_p1": 0.699684202671051
+    },
+    "Tfh": {
+      "n": 113,
+      "accuracy": 0.9646017699115044,
+      "mean_entropy": 0.2938854396343231,
+      "mean_vacuity": 0.03595215454697609,
+      "mean_p1": 0.9412015676498413
+    },
+    "Th1": {
+      "n": 21,
+      "accuracy": 0.6666666666666666,
+      "mean_entropy": 0.7214382886886597,
+      "mean_vacuity": 0.042292993515729904,
+      "mean_p1": 0.7476617097854614
+    },
+    "Th2": {
+      "n": 12,
+      "accuracy": 0.08333333333333333,
+      "mean_entropy": 0.9074289202690125,
+      "mean_vacuity": 0.05683807656168938,
+      "mean_p1": 0.6786441802978516
+    },
+    "Treg": {
+      "n": 62,
+      "accuracy": 0.5806451612903226,
+      "mean_entropy": 0.5896823406219482,
+      "mean_vacuity": 0.04769015684723854,
+      "mean_p1": 0.8174843192100525
+    },
+    "non-Tfh CD4 T": {
+      "n": 52,
+      "accuracy": 0.6346153846153846,
+      "mean_entropy": 0.6585267186164856,
+      "mean_vacuity": 0.05443549156188965,
+      "mean_p1": 0.7914788722991943
+    }
+  }
+}
