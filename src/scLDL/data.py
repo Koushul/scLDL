@@ -20,14 +20,18 @@ def looks_like_counts(x) -> bool:
         if sparse.issparse(mx):
             mx = mx.toarray().ravel()[0]
         mx = float(mx)
-        sample = to_dense(x[: min(32, n)])
+        amin = float(x.data.min()) if x.data.size else 0.0
+        sample = np.asarray(x.data[: min(4096, int(x.data.size))], dtype=np.float64) if x.data.size else np.array([0.0])
     else:
         arr = np.asarray(x)
         mx = float(np.nanmax(arr))
-        sample = np.asarray(arr[: min(32, n)], dtype=np.float64)
+        amin = float(np.nanmin(arr))
+        flat = np.asarray(arr, dtype=np.float64).ravel()
+        nz = flat[np.abs(flat) > 0]
+        sample = nz[:4096] if nz.size else flat[: min(32, flat.size)]
     if sample.size == 0:
         return False
-    if float(np.nanmin(sample)) < -0.05:
+    if amin < -0.05:
         return False
     if mx > 20:
         return True

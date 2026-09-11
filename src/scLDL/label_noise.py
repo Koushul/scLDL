@@ -5,6 +5,14 @@ import numpy as np
 from scLDL.interpret import dissonance, entropy, row_normalize
 
 
+LYMPH_SIMILAR = {
+    "Resting T": "CD8+ T",
+    "CD8+ T": "Resting T",
+    "Tfh": "Treg",
+    "Treg": "Tfh",
+    "Th2": "Tfh",
+}
+
 HIPPO_SIMILAR = {
     "CA1": "CA3",
     "CA3": "CA1",
@@ -25,8 +33,8 @@ def flip_labels(y, rate, rng, *, mode: str = "uniform", similar: dict | None = N
 
     Flips are stratified by class so every type is corrupted at the same rate.
     ``mode="uniform"`` draws the wrong label from the other observed types.
-    ``mode="similar"`` uses ``similar`` (default ``HIPPO_SIMILAR``) when the
-    target type is present, otherwise falls back to uniform.
+    ``mode="similar"`` uses ``similar`` when the target type is present,
+    otherwise falls back to uniform. Pass a tissue map; there is no implicit default.
     """
     if mode not in {"uniform", "similar"}:
         raise ValueError("mode must be 'uniform' or 'similar'")
@@ -39,7 +47,7 @@ def flip_labels(y, rate, rng, *, mode: str = "uniform", similar: dict | None = N
         return noisy, flipped
 
     classes = np.unique(y)
-    similar = dict(HIPPO_SIMILAR if similar is None else similar)
+    similar = {} if similar is None else dict(similar)
     others = {c: classes[classes != c] for c in classes}
 
     for c in classes:

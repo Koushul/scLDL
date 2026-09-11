@@ -3,6 +3,7 @@ from anndata import AnnData
 
 from scLDL.label_noise import (
     HIPPO_SIMILAR,
+    LYMPH_SIMILAR,
     align_proba,
     flip_labels,
     mass_on_label,
@@ -30,6 +31,11 @@ def test_similar_flips_use_hippo_map():
     assert np.all(noisy[(y == "CA1") & flipped] == "CA3")
     assert np.all(noisy[(y == "CA3") & flipped] == "CA1")
     assert np.all(noisy[(y == "DG") & flipped] == "CA1")
+    y2 = np.array(["Resting T"] * 40 + ["CD8+ T"] * 40 + ["B"] * 20)
+    noisy2, flipped2 = flip_labels(y2, 0.5, rng, mode="similar", similar=LYMPH_SIMILAR)
+    assert np.all(noisy2[(y2 == "Resting T") & flipped2] == "CD8+ T")
+    assert np.all(noisy2[(y2 == "CD8+ T") & flipped2] == "Resting T")
+    assert np.all(noisy2[(y2 == "B") & flipped2] != "B")
 
 
 def test_mass_on_label_and_align_proba():

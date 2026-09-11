@@ -70,6 +70,10 @@ def test_looks_like_counts_uses_global_max():
     scaled = logx - 1.5
     scaled[0, 0] = 25.0
     assert not looks_like_counts(scaled)
+    log_sparse = np.zeros((40, 6), dtype=np.float32)
+    log_sparse[35, 1] = 0.37
+    log_sparse[36, 2] = 1.8
+    assert not looks_like_counts(sparse.csr_matrix(log_sparse))
 
 
 def test_log1p_normalize_matches_scanpy():

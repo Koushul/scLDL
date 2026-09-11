@@ -1,5 +1,5 @@
 #!/usr/bin/env python
-"""Inject increasing label noise into Slide-seqV2 RCTD singlets and score scLDL OOF recovery."""
+"""Inject increasing label noise into a labeled Slide-seqV2 dataset and score scLDL OOF recovery."""
 
 from __future__ import annotations
 
@@ -15,6 +15,7 @@ from sklearn.model_selection import StratifiedKFold
 
 from scLDL.label_noise import (
     HIPPO_SIMILAR,
+    LYMPH_SIMILAR,
     align_proba,
     flip_labels,
     noise_recovery_metrics,
@@ -24,7 +25,14 @@ from scLDL.spatial import map_rctd, standardize_gene_names, subsample_balanced
 
 ROOT = Path(__file__).resolve().parents[1]
 DATA = ROOT / "data" / "spatial"
-OUT = ROOT / "artifacts" / "slideseq_label_noise"
+LN_H5 = Path("/ix1/ylee/kor11/tools/SpaceTravLR/data/SlideSeqV2_mouse_lymphnode.h5ad")
+SIMILAR_MAPS = {"hippo": HIPPO_SIMILAR, "lymphnode": LYMPH_SIMILAR}
+
+
+def out_dir(dataset: str) -> Path:
+    if dataset == "hippo":
+        return ROOT / "artifacts" / "slideseq_label_noise"
+    return ROOT / "artifacts" / f"slideseq_label_noise_{dataset}"
 
 
 def load_slideseq_singlets(min_class: int = 50, max_per_class: int | None = 200, seed: int = 0):
@@ -50,12 +58,41 @@ def load_slideseq_singlets(min_class: int = 50, max_per_class: int | None = 200,
     return query
 
 
+def load_lymphnode(min_class: int = 50, max_per_class: int | None = 180, seed: int = 0):
+    from scLDL.data import looks_like_counts
+
+    if not LN_H5.exists():
+        raise FileNotFoundError(f"Missing lymph-node Slide-seqV2 file: {LN_H5}")
+    query = sc.read_h5ad(LN_H5)
+    query.obs["cell_type"] = query.obs["cell_type"].astype(str)
+    query = query[query.obs["cell_type"].notna() & (query.obs["cell_type"] != "nan")].copy()
+    counts = query.obs["cell_type"].value_counts()
+    keep = counts[counts >= min_class].index
+    query = query[query.obs["cell_type"].isin(keep)].copy()
+    query = standardize_gene_names(query)
+    if looks_like_counts(query.X):
+        raise RuntimeError("Lymph-node matrix was classified as counts; it should already be log-normalized.")
+    if max_per_class:
+        query = subsample_balanced(query, "cell_type", max_per_class, seed=seed)
+    if "spatial" not in query.obsm and "X_spatial" in query.obsm:
+        query.obsm["spatial"] = np.asarray(query.obsm["X_spatial"], dtype=np.float64)[:, :2]
+    return query
+
+
+def load_dataset(name: str, min_class: int, max_per_class: int | None, seed: int):
+    if name == "hippo":
+        return load_slideseq_singlets(min_class=min_class, max_per_class=max_per_class, seed=seed)
+    if name == "lymphnode":
+        return load_lymphnode(min_class=min_class, max_per_class=max_per_class, seed=seed)
+    raise ValueError(f"Unknown dataset {name!r}")
+
+
 def _pipe_kwargs(args):
     variant = getattr(args, "variant", "baseline")
     return dict(
         model="scldl",
         task="type",
-        n_top_genes=args.n_top_genes,
+        n_top_genes=min(args.n_top_genes, int(getattr(args, "n_vars", args.n_top_genes))),
         n_pcs=args.n_pcs,
         n_neighbors=args.n_neighbors,
         n_hidden=args.n_hidden,
@@ -103,7 +140,9 @@ def _pred_from_proba(p, classes):
 
 def evaluate_fraction(adata, y_true, rate, args):
     rng = np.random.default_rng(args.seed + int(round(1000 * rate)))
-    noisy, flipped = flip_labels(y_true, rate, rng, mode=args.noise)
+    noisy, flipped = flip_labels(
+        y_true, rate, rng, mode=args.noise, similar=SIMILAR_MAPS[args.dataset]
+    )
     work = adata.copy()
     work.obs["cell_type"] = noisy
     classes = np.unique(noisy)
@@ -121,6 +160,7 @@ def evaluate_fraction(adata, y_true, rate, args):
         row["realized_flips"] = int(flipped.sum())
         row["variant"] = getattr(args, "variant", "baseline")
         row["seed"] = int(args.seed)
+        row["dataset"] = args.dataset
         rows.append(row)
     return rows, {"noisy": noisy, "flipped": flipped, "parts": parts, "classes": classes}
 
@@ -141,7 +181,7 @@ def plot_curves(df, path):
         ax.set_xlim(-0.02, 0.55)
         ax.grid(True, alpha=0.3)
         ax.legend(fontsize=8, frameon=False)
-    axes[1].set_ylim(0.45, 1.02)
+    axes[1].set_ylim(0.4, 1.02)
     fig.tight_layout()
     fig.savefig(path, dpi=160, bbox_inches="tight")
     plt.close(fig)
@@ -220,6 +260,7 @@ def _fmt(x):
 
 def main():
     p = argparse.ArgumentParser()
+    p.add_argument("--dataset", choices=["hippo", "lymphnode"], default="hippo")
     p.add_argument("--fractions", default="0,0.1,0.2,0.3,0.5")
     p.add_argument("--noise", choices=["uniform", "similar"], default="uniform")
     p.add_argument("--folds", type=int, default=3)
@@ -238,8 +279,10 @@ def main():
     p.add_argument("--graph-refine", action="store_true")
     p.add_argument("--verbose", action="store_true")
     args = p.parse_args()
+    OUT = out_dir(args.dataset)
     OUT.mkdir(parents=True, exist_ok=True)
-    adata = load_slideseq_singlets(min_class=args.min_class, max_per_class=args.max_per_class, seed=args.seed)
+    adata = load_dataset(args.dataset, args.min_class, args.max_per_class, args.seed)
+    args.n_vars = int(adata.n_vars)
     y_true = adata.obs["cell_type"].astype(str).to_numpy()
     if args.variant == "compare":
         variants = ["baseline", "robust"]
@@ -248,7 +291,9 @@ def main():
         variants = [args.variant]
         seeds = [int(x) for x in args.seeds.split(",")] if args.seeds else [args.seed]
     meta = {
+        "dataset": args.dataset,
         "n": int(adata.n_obs),
+        "n_vars": int(adata.n_vars),
         "types": adata.obs["cell_type"].value_counts().to_dict(),
         "noise": args.noise,
         "folds": args.folds,
