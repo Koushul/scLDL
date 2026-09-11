@@ -1,0 +1,37 @@
+{
+  "protocol": "Slide-seqV2 RCTD singlets, 1893 beads, 3-fold OOF, 3 seeds, paired t-test vs hard-label scLDL",
+  "v1_soft_targets_gce": {
+    "note": "Global 55% graph mix + GCE + manifold. Rejected.",
+    "uniform_0_acc_delta": -0.026,
+    "uniform_0_acc_p": 0.006,
+    "uniform_0.5_acc_delta": 0.010,
+    "uniform_0.5_acc_p": 0.182,
+    "uniform_0.5_auroc_delta": 0.024,
+    "uniform_0.5_auroc_p": 0.010
+  },
+  "v2_agreement_weights_hard_targets": {
+    "note": "Hard one-hots, downweight neighbor disagreement, lightly smooth Y_ref. Best of the three; still not a large win.",
+    "uniform_0_acc_delta": -0.004,
+    "uniform_0_acc_p": 0.560,
+    "uniform_0.3_acc_delta": -0.007,
+    "uniform_0.3_acc_p": 0.152,
+    "uniform_0.5_acc_delta": 0.017,
+    "uniform_0.5_acc_p": 0.018,
+    "uniform_0.5_auroc_delta": 0.017,
+    "uniform_0.5_auroc_p": 0.024
+  },
+  "v3_adaptive_per_cell_mix": {
+    "note": "Mix toward graph only when neighbors disagree. Hurt clean and similar-type noise.",
+    "uniform_0_acc_delta": -0.030,
+    "uniform_0_acc_p": 0.084,
+    "uniform_0.3_acc_delta": -0.017,
+    "uniform_0.3_acc_p": 0.027,
+    "uniform_0.5_auroc_delta": 0.020,
+    "uniform_0.5_auroc_p": 0.0003,
+    "similar_0.3_acc_delta": -0.025,
+    "similar_0.5_acc_delta": -0.023,
+    "similar_0.5_auroc_delta": -0.041,
+    "similar_0.5_auroc_p": 0.008
+  },
+  "decision": "Do not change the default type trainer. label_smooth='on' keeps the v2 weight-only recipe as an opt-in. None of the recipes produced a large, general robustness gain."
+}

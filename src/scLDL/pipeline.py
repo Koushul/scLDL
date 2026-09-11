@@ -38,9 +38,9 @@ class AnnotationPipeline:
         After blending, ``graph_refine="auto"`` smooths the simplex on the query
         neighborhood graph whenever the query has coordinates. ``supervised_mnn``
         stays off: a type-restricted second MNN pass can kidnap similar subtypes.
-        ``label_smooth="auto"`` (type task) replaces hard one-hots with neighbor
-        consensus and downweights cells whose neighbors disagree with the given
-        label, which is the main defense against misannotation.
+        ``label_smooth="on"`` downweights training cells whose neighbors disagree
+        with the given label. It is off by default: on Slide-seq RCTD noise it
+        only helps at extreme uniform flip rates and can hurt similar-type swaps.
     """
 
     def __init__(
@@ -62,7 +62,7 @@ class AnnotationPipeline:
         spatial: str = "auto",
         graph_refine: str = "auto",
         supervised_mnn: str = "off",
-        label_smooth: str = "auto",
+        label_smooth: str = "off",
         **model_kwargs,
     ):
         if model not in ANNOTATION_MODELS:
@@ -117,7 +117,7 @@ class AnnotationPipeline:
             return False
         if self.label_smooth == "on":
             return True
-        return self.task == "type" and self._is_scldl()
+        return False
 
     def _marker_matrix(self, expr, gene_names):
         if not self.markers or self.classes_ is None:
@@ -168,12 +168,13 @@ class AnnotationPipeline:
             y_ref = targets
             self.last_label_smooth_ = "state"
         elif self._use_label_smooth():
-            targets, sample_weight, neighbor_p, _smoothed = robust_type_targets(
+            targets, sample_weight, neighbor_p, smoothed = robust_type_targets(
                 x_model,
                 y_onehot,
                 n_neighbors=self.n_neighbors,
+                mix=0.0,
             )
-            y_ref = targets
+            y_ref = blend_targets((y_onehot, 0.65), (smoothed, 0.35))
             self.last_label_smooth_ = "on"
         else:
             targets = y_onehot
