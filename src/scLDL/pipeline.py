@@ -168,13 +168,12 @@ class AnnotationPipeline:
             y_ref = targets
             self.last_label_smooth_ = "state"
         elif self._use_label_smooth():
-            targets, sample_weight, neighbor_p, smoothed = robust_type_targets(
+            targets, sample_weight, neighbor_p, _smoothed = robust_type_targets(
                 x_model,
                 y_onehot,
                 n_neighbors=self.n_neighbors,
-                mix=0.0,
             )
-            y_ref = blend_targets((y_onehot, 0.65), (smoothed, 0.35))
+            y_ref = targets
             self.last_label_smooth_ = "on"
         else:
             targets = y_onehot

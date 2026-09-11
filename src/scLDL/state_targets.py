@@ -149,14 +149,15 @@ def robust_type_targets(
     n_neighbors: int = 30,
     alpha: float = 0.8,
     n_iter: int = 12,
-    mix: float = 0.55,
+    mix="adaptive",
     min_weight: float = 0.2,
 ):
-    """Soften type labels with neighbor consensus and downweight isolated flips.
+    """Soften only cells whose neighbors disagree with the given label.
 
-    ``agree`` is the smoothed mass on the given (possibly noisy) class. Cells
-    whose neighbors disagree with the annotation get lower training weight and
-    a target pulled toward the graph posterior.
+    ``agree`` is the graph-smoothed mass on the annotated class. Isolated
+    mislabels get a target pulled toward the neighbor posterior and a lower
+    training weight. Cells that already agree with their neighborhood stay
+    close to one-hot, so clean accuracy is not softened globally.
     """
     Y = np.asarray(Y, dtype=np.float64)
     smoothed, graph = knn_smooth_labels(
@@ -169,9 +170,17 @@ def robust_type_targets(
         n_pcs=None,
         return_graph=True,
     )
-    mix = float(np.clip(mix, 0.0, 1.0))
-    targets = blend_targets((Y, 1.0 - mix), (smoothed, mix))
-    agree = np.sum(np.asarray(smoothed, dtype=np.float64) * Y, axis=1)
+    smoothed = np.asarray(smoothed, dtype=np.float64)
+    agree = np.sum(smoothed * Y, axis=1)
+    if mix == "adaptive":
+        m = np.clip(1.0 - agree, 0.0, 0.85)
+        targets = (1.0 - m)[:, None] * Y + m[:, None] * smoothed
+        targets = np.clip(targets, 0, None)
+        targets = targets / np.clip(targets.sum(axis=1, keepdims=True), 1e-12, None)
+        targets = targets.astype(np.float32)
+    else:
+        mix = float(np.clip(mix, 0.0, 1.0))
+        targets = blend_targets((Y, 1.0 - mix), (smoothed, mix))
     weights = np.clip(agree, min_weight, 1.0).astype(np.float32)
     return targets, weights, np.asarray(graph, dtype=np.float32), smoothed.astype(np.float32)
 

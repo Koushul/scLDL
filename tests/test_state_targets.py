@@ -57,6 +57,8 @@ def test_robust_type_targets_downweight_isolated_flips():
     assert weights[flip].mean() < weights[~flip].mean()
     true_mass = smoothed[np.arange(120), y]
     assert true_mass[flip].mean() > 0.4
+    targets, _, _, _ = robust_type_targets(X, noisy, n_neighbors=8, n_iter=8)
+    assert targets[flip].max(axis=1).mean() < targets[~flip].max(axis=1).mean()
 
 
 def test_state_model_predicts_simplex():
