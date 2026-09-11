@@ -143,6 +143,25 @@ def plot_curves(df, path):
     plt.close(fig)
 
 
+def _json_ready(obj):
+    if isinstance(obj, dict):
+        return {k: _json_ready(v) for k, v in obj.items()}
+    if isinstance(obj, list):
+        return [_json_ready(v) for v in obj]
+    if isinstance(obj, float) and not np.isfinite(obj):
+        return None
+    if isinstance(obj, (np.floating, np.integer)):
+        val = obj.item()
+        if isinstance(val, float) and not np.isfinite(val):
+            return None
+        return val
+    return obj
+
+
+def _fmt(x):
+    return "  nan" if x is None else f"{x:.3f}"
+
+
 def main():
     p = argparse.ArgumentParser()
     p.add_argument("--fractions", default="0,0.1,0.2,0.3,0.5")
@@ -181,18 +200,21 @@ def main():
         for row in part_rows:
             print(
                 f"{row['source']:12s}  acc_true={row['acc_vs_true']:.3f}  "
-                f"correct={row['correction_rate']:.3f}  "
-                f"auroc={row['discovery_auroc_1m_p_given']:.3f}  "
-                f"P@k={row['precision_at_nflip']:.3f}",
+                f"correct={_fmt(row['correction_rate'])}  "
+                f"auroc={_fmt(row['discovery_auroc_1m_p_given'])}  "
+                f"P@k={_fmt(row['precision_at_nflip'])}",
                 flush=True,
             )
         rows.extend(part_rows)
-        (OUT / "metrics.json").write_text(json.dumps({"meta": meta, "rows": rows}, indent=2), encoding="utf-8")
+        (OUT / "metrics.json").write_text(json.dumps(_json_ready({"meta": meta, "rows": rows}), indent=2), encoding="utf-8")
     df = pd.DataFrame(rows)
-    df.to_csv(OUT / "metrics.csv", index=False)
-    plot_curves(df, OUT / "noise_curves.png")
-    (OUT / "metrics.json").write_text(json.dumps({"meta": meta, "rows": rows}, indent=2), encoding="utf-8")
-    print(f"\nwrote {OUT / 'metrics.csv'}")
+    tag = args.noise
+    df.to_csv(OUT / f"metrics_{tag}.csv", index=False)
+    plot_curves(df, OUT / f"noise_curves_{tag}.png")
+    payload = _json_ready({"meta": meta, "rows": rows})
+    (OUT / f"metrics_{tag}.json").write_text(json.dumps(payload, indent=2), encoding="utf-8")
+    (OUT / "metrics.json").write_text(json.dumps(payload, indent=2), encoding="utf-8")
+    print(f"\nwrote {OUT / f'metrics_{tag}.csv'}")
 
 
 if __name__ == "__main__":

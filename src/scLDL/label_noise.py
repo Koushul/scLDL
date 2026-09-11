@@ -94,7 +94,7 @@ def _safe_auc(y_true, scores):
     ok = np.isfinite(scores)
     y_true, scores = y_true[ok], scores[ok]
     if y_true.size == 0 or y_true.min() == y_true.max():
-        return float("nan")
+        return None
     from sklearn.metrics import roc_auc_score
 
     return float(roc_auc_score(y_true, scores))
@@ -106,7 +106,7 @@ def _safe_ap(y_true, scores):
     ok = np.isfinite(scores)
     y_true, scores = y_true[ok], scores[ok]
     if y_true.size == 0 or not y_true.any():
-        return float("nan")
+        return None
     from sklearn.metrics import average_precision_score
 
     return float(average_precision_score(y_true, scores))
@@ -117,7 +117,7 @@ def precision_at_k(y_true, scores, k):
     scores = np.asarray(scores, dtype=np.float64)
     k = int(k)
     if k <= 0 or len(y_true) == 0:
-        return float("nan")
+        return None
     order = np.argsort(-scores, kind="mergesort")[: min(k, len(y_true))]
     return float(y_true[order].mean())
 
@@ -155,12 +155,12 @@ def noise_recovery_metrics(y_true, y_noisy, y_pred, proba, classes, *, vacuity=N
         "discovery_auroc_dissonance": _safe_auc(flipped, diss),
         "discovery_auroc_disagree": _safe_auc(flipped, disagree.astype(float)),
         "precision_at_nflip": precision_at_k(flipped, suspect, n_flip),
-        "disagree_recall": float(np.mean(disagree[flipped])) if n_flip else float("nan"),
-        "disagree_precision": float(np.mean(flipped[disagree])) if disagree.any() else float("nan"),
-        "correction_rate": float(np.mean(y_pred[flipped] == y_true[flipped])) if n_flip else float("nan"),
-        "wrong_fix_rate": float(np.mean((y_pred[flipped] != y_true[flipped]) & (y_pred[flipped] != y_noisy[flipped]))) if n_flip else float("nan"),
-        "clean_kept_rate": float(np.mean(y_pred[clean] == y_true[clean])) if clean.any() else float("nan"),
-        "false_correction_rate": float(np.mean(y_pred[clean] != y_true[clean])) if clean.any() else float("nan"),
+        "disagree_recall": float(np.mean(disagree[flipped])) if n_flip else None,
+        "disagree_precision": float(np.mean(flipped[disagree])) if disagree.any() else None,
+        "correction_rate": float(np.mean(y_pred[flipped] == y_true[flipped])) if n_flip else None,
+        "wrong_fix_rate": float(np.mean((y_pred[flipped] != y_true[flipped]) & (y_pred[flipped] != y_noisy[flipped]))) if n_flip else None,
+        "clean_kept_rate": float(np.mean(y_pred[clean] == y_true[clean])) if clean.any() else None,
+        "false_correction_rate": float(np.mean(y_pred[clean] != y_true[clean])) if clean.any() else None,
     }
     if vacuity is not None:
         vacuity = np.asarray(vacuity, dtype=np.float64).ravel()
