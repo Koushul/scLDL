@@ -197,18 +197,6 @@ def plot_compare(df, path):
     fig.tight_layout()
     fig.savefig(path, dpi=160, bbox_inches="tight")
     plt.close(fig)
-    if isinstance(obj, dict):
-        return {k: _json_ready(v) for k, v in obj.items()}
-    if isinstance(obj, list):
-        return [_json_ready(v) for v in obj]
-    if isinstance(obj, float) and not np.isfinite(obj):
-        return None
-    if isinstance(obj, (np.floating, np.integer)):
-        val = obj.item()
-        if isinstance(val, float) and not np.isfinite(val):
-            return None
-        return val
-    return obj
 
 
 def _json_ready(obj):

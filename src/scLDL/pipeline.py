@@ -165,16 +165,20 @@ class AnnotationPipeline:
             if concepts is not None:
                 parts.append((concepts, 0.30))
             targets = blend_targets(*parts)
+            y_ref = targets
             self.last_label_smooth_ = "state"
         elif self._use_label_smooth():
-            targets, sample_weight, neighbor_p, _ = robust_type_targets(
+            targets, sample_weight, neighbor_p, smoothed = robust_type_targets(
                 x_model,
                 y_onehot,
                 n_neighbors=self.n_neighbors,
+                mix=0.0,
             )
+            y_ref = blend_targets((y_onehot, 0.65), (smoothed, 0.35))
             self.last_label_smooth_ = "on"
         else:
             targets = y_onehot
+            y_ref = y_onehot
             self.last_label_smooth_ = "off"
 
         cls = ANNOTATION_MODELS[self.model_name]
@@ -197,10 +201,9 @@ class AnnotationPipeline:
                 peak_weight=0.08 if self.task == "type" else 0.0,
                 mixup_alpha=0.0 if self.task == "type" else 0.3,
                 lineage_weight=0.35 if self.task == "state" and self.lineage_edges else 0.0,
-                manifold_weight=0.08 if self.task == "type" and self._use_label_smooth() else (0.10 if self.task == "state" else 0.0),
+                manifold_weight=0.10 if self.task == "state" else 0.0,
                 vacuity_weight=0.08 if self.task == "state" else 0.0,
                 kl_weight=0.2 if self.task == "state" else 0.05,
-                gce_q=0.7 if self.task == "type" and self._use_label_smooth() else 0.0,
             )
         elif self.model_name == "state_concentration":
             params.update(lineage_edges=self.lineage_edges if self.task == "state" else None)
@@ -216,7 +219,7 @@ class AnnotationPipeline:
             extra_fit["neighbor_p"] = neighbor_p
         self.estimator_ = cls(**params)
         self.estimator_.fit(x_model, targets, **{k: v for k, v in extra_fit.items() if v is not None or k == "concepts"})
-        self.Y_ref_ = targets
+        self.Y_ref_ = y_ref
         self.x_log_ref_ = x_log
         return self
 
