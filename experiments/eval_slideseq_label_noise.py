@@ -211,6 +211,21 @@ def plot_compare(df, path):
     return obj
 
 
+def _json_ready(obj):
+    if isinstance(obj, dict):
+        return {k: _json_ready(v) for k, v in obj.items()}
+    if isinstance(obj, list):
+        return [_json_ready(v) for v in obj]
+    if isinstance(obj, float) and not np.isfinite(obj):
+        return None
+    if isinstance(obj, (np.floating, np.integer)):
+        val = obj.item()
+        if isinstance(val, float) and not np.isfinite(val):
+            return None
+        return val
+    return obj
+
+
 def _fmt(x):
     return "  nan" if x is None else f"{x:.3f}"
 
