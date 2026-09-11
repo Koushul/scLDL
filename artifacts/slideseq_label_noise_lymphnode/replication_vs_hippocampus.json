@@ -1,0 +1,768 @@
+{
+  "protocol": {
+    "matched": [
+      "3-fold stratified OOF",
+      "query_correct=none, spatial=off, graph_refine=off, label_smooth=off",
+      "seed=0, fractions 0/0.1/0.2/0.3/0.5",
+      "min_class=50, max_per_class=180",
+      "discovery score = 1 - p(given noisy label)",
+      "correction = pred == original among flipped cells"
+    ],
+    "hippocampus": {
+      "n": 1893,
+      "n_types": 13,
+      "labels": "RCTD singlets",
+      "matrix": "raw counts (log1p in pipeline)",
+      "chance": 0.07692307692307693
+    },
+    "lymphnode": {
+      "n": 1260,
+      "n_types": 7,
+      "labels": "author cell_type",
+      "matrix": "already log-normalized; loader raises if classified as counts",
+      "chance": 0.14285714285714285,
+      "path": "/ix1/ylee/kor11/tools/SpaceTravLR/data/SlideSeqV2_mouse_lymphnode.h5ad",
+      "similar_map": {
+        "Resting T": "CD8+ T",
+        "CD8+ T": "Resting T",
+        "Tfh": "Treg",
+        "Treg": "Tfh",
+        "Th2": "Tfh",
+        "B": "uniform fallback",
+        "DC": "uniform fallback"
+      }
+    }
+  },
+  "scldl_vs_knn": {
+    "hippo_uniform": [
+      {
+        "rate": 0.0,
+        "acc_vs_true": {
+          "scldl": 0.5250924458531432,
+          "knn": 0.444796619123085,
+          "scldl_minus_knn": 0.0802958267300582
+        },
+        "discovery_auroc": {
+          "scldl": null,
+          "knn": null,
+          "scldl_minus_knn": null
+        },
+        "correction": {
+          "scldl": null,
+          "knn": null
+        }
+      },
+      {
+        "rate": 0.1,
+        "acc_vs_true": {
+          "scldl": 0.5335446381405177,
+          "knn": 0.4463814051769678,
+          "scldl_minus_knn": 0.08716323296354989
+        },
+        "discovery_auroc": {
+          "scldl": 0.9233611545818118,
+          "knn": 0.8756101423354945,
+          "scldl_minus_knn": 0.04775101224631728
+        },
+        "correction": {
+          "scldl": 0.5185185185185185,
+          "knn": 0.4656084656084656
+        }
+      },
+      {
+        "rate": 0.2,
+        "acc_vs_true": {
+          "scldl": 0.5330163761225568,
+          "knn": 0.4358161648177496,
+          "scldl_minus_knn": 0.09720021130480722
+        },
+        "discovery_auroc": {
+          "scldl": 0.924361195247174,
+          "knn": 0.8749298543410142,
+          "scldl_minus_knn": 0.04943134090615975
+        },
+        "correction": {
+          "scldl": 0.5145118733509235,
+          "knn": 0.4327176781002638
+        }
+      },
+      {
+        "rate": 0.3,
+        "acc_vs_true": {
+          "scldl": 0.5108293713681986,
+          "knn": 0.4352879027997887,
+          "scldl_minus_knn": 0.07554146856840993
+        },
+        "discovery_auroc": {
+          "scldl": 0.9114508943978678,
+          "knn": 0.8462499800890946,
+          "scldl_minus_knn": 0.06520091430877317
+        },
+        "correction": {
+          "scldl": 0.523725834797891,
+          "knn": 0.4323374340949033
+        }
+      },
+      {
+        "rate": 0.5,
+        "acc_vs_true": {
+          "scldl": 0.4712097200211305,
+          "knn": 0.4020073956682514,
+          "scldl_minus_knn": 0.0692023243528791
+        },
+        "discovery_auroc": {
+          "scldl": 0.8893880977204078,
+          "knn": 0.7941502151000935,
+          "scldl_minus_knn": 0.0952378826203143
+        },
+        "correction": {
+          "scldl": 0.459830866807611,
+          "knn": 0.40169133192389
+        }
+      }
+    ],
+    "hippo_similar": [
+      {
+        "rate": 0.0,
+        "acc_vs_true": {
+          "scldl": 0.5356576862123613,
+          "knn": 0.444796619123085,
+          "scldl_minus_knn": 0.09086106708927633
+        },
+        "discovery_auroc": {
+          "scldl": null,
+          "knn": null,
+          "scldl_minus_knn": null
+        },
+        "correction": {
+          "scldl": null,
+          "knn": null
+        }
+      },
+      {
+        "rate": 0.1,
+        "acc_vs_true": {
+          "scldl": 0.5409403063919704,
+          "knn": 0.4426835710512414,
+          "scldl_minus_knn": 0.09825673534072904
+        },
+        "discovery_auroc": {
+          "scldl": 0.818006806269717,
+          "knn": 0.7339468912238865,
+          "scldl_minus_knn": 0.08405991504583055
+        },
+        "correction": {
+          "scldl": 0.5502645502645502,
+          "knn": 0.4126984126984127
+        }
+      },
+      {
+        "rate": 0.2,
+        "acc_vs_true": {
+          "scldl": 0.502905441098785,
+          "knn": 0.4215530903328051,
+          "scldl_minus_knn": 0.08135235076597991
+        },
+        "discovery_auroc": {
+          "scldl": 0.7654329163515197,
+          "knn": 0.681498624970809,
+          "scldl_minus_knn": 0.08393429138071062
+        },
+        "correction": {
+          "scldl": 0.496042216358839,
+          "knn": 0.4010554089709762
+        }
+      },
+      {
+        "rate": 0.3,
+        "acc_vs_true": {
+          "scldl": 0.5187533016376122,
+          "knn": 0.404648705758056,
+          "scldl_minus_knn": 0.11410459587955624
+        },
+        "discovery_auroc": {
+          "scldl": 0.7059199103743781,
+          "knn": 0.6135658307626142,
+          "scldl_minus_knn": 0.0923540796117639
+        },
+        "correction": {
+          "scldl": 0.5325131810193322,
+          "knn": 0.4077328646748682
+        }
+      },
+      {
+        "rate": 0.5,
+        "acc_vs_true": {
+          "scldl": 0.3301637612255679,
+          "knn": 0.2789223454833597,
+          "scldl_minus_knn": 0.051241415742208196
+        },
+        "discovery_auroc": {
+          "scldl": 0.5856158649434846,
+          "knn": 0.5081273678312062,
+          "scldl_minus_knn": 0.07748849711227845
+        },
+        "correction": {
+          "scldl": 0.3298097251585624,
+          "knn": 0.2758985200845666
+        }
+      }
+    ],
+    "lymphnode_uniform": [
+      {
+        "rate": 0.0,
+        "acc_vs_true": {
+          "scldl": 0.2555555555555555,
+          "knn": 0.2055555555555555,
+          "scldl_minus_knn": 0.04999999999999999
+        },
+        "discovery_auroc": {
+          "scldl": null,
+          "knn": null,
+          "scldl_minus_knn": null
+        },
+        "correction": {
+          "scldl": null,
+          "knn": null
+        }
+      },
+      {
+        "rate": 0.1,
+        "acc_vs_true": {
+          "scldl": 0.2396825396825397,
+          "knn": 0.176984126984127,
+          "scldl_minus_knn": 0.0626984126984127
+        },
+        "discovery_auroc": {
+          "scldl": 0.6228689006466784,
+          "knn": 0.5392766159961927,
+          "scldl_minus_knn": 0.08359228465048574
+        },
+        "correction": {
+          "scldl": 0.2698412698412698,
+          "knn": 0.2063492063492063
+        }
+      },
+      {
+        "rate": 0.2,
+        "acc_vs_true": {
+          "scldl": 0.2349206349206349,
+          "knn": 0.1825396825396825,
+          "scldl_minus_knn": 0.05238095238095239
+        },
+        "discovery_auroc": {
+          "scldl": 0.6101151108591585,
+          "knn": 0.5503787163013354,
+          "scldl_minus_knn": 0.05973639455782309
+        },
+        "correction": {
+          "scldl": 0.238095238095238,
+          "knn": 0.1746031746031746
+        }
+      },
+      {
+        "rate": 0.3,
+        "acc_vs_true": {
+          "scldl": 0.2261904761904762,
+          "knn": 0.1880952380952381,
+          "scldl_minus_knn": 0.0380952380952381
+        },
+        "discovery_auroc": {
+          "scldl": 0.6018098597463677,
+          "knn": 0.586959651585502,
+          "scldl_minus_knn": 0.014850208160865686
+        },
+        "correction": {
+          "scldl": 0.1878306878306878,
+          "knn": 0.201058201058201
+        }
+      },
+      {
+        "rate": 0.5,
+        "acc_vs_true": {
+          "scldl": 0.2142857142857142,
+          "knn": 0.165079365079365,
+          "scldl_minus_knn": 0.0492063492063492
+        },
+        "discovery_auroc": {
+          "scldl": 0.6139380196523053,
+          "knn": 0.5147946586041824,
+          "scldl_minus_knn": 0.09914336104812294
+        },
+        "correction": {
+          "scldl": 0.2111111111111111,
+          "knn": 0.1841269841269841
+        }
+      }
+    ],
+    "lymphnode_similar": [
+      {
+        "rate": 0.0,
+        "acc_vs_true": {
+          "scldl": 0.2452380952380952,
+          "knn": 0.2055555555555555,
+          "scldl_minus_knn": 0.03968253968253971
+        },
+        "discovery_auroc": {
+          "scldl": null,
+          "knn": null,
+          "scldl_minus_knn": null
+        },
+        "correction": {
+          "scldl": null,
+          "knn": null
+        }
+      },
+      {
+        "rate": 0.1,
+        "acc_vs_true": {
+          "scldl": 0.2587301587301587,
+          "knn": 0.1722222222222222,
+          "scldl_minus_knn": 0.0865079365079365
+        },
+        "discovery_auroc": {
+          "scldl": 0.5943772570756698,
+          "knn": 0.4861915959799557,
+          "scldl_minus_knn": 0.10818566109571409
+        },
+        "correction": {
+          "scldl": 0.246031746031746,
+          "knn": 0.1825396825396825
+        }
+      },
+      {
+        "rate": 0.2,
+        "acc_vs_true": {
+          "scldl": 0.2357142857142857,
+          "knn": 0.1777777777777777,
+          "scldl_minus_knn": 0.05793650793650801
+        },
+        "discovery_auroc": {
+          "scldl": 0.563980221718317,
+          "knn": 0.4653092718568909,
+          "scldl_minus_knn": 0.09867094986142605
+        },
+        "correction": {
+          "scldl": 0.1944444444444444,
+          "knn": 0.1587301587301587
+        }
+      },
+      {
+        "rate": 0.3,
+        "acc_vs_true": {
+          "scldl": 0.2206349206349206,
+          "knn": 0.1698412698412698,
+          "scldl_minus_knn": 0.05079365079365081
+        },
+        "discovery_auroc": {
+          "scldl": 0.5093552412146516,
+          "knn": 0.4372982879218706,
+          "scldl_minus_knn": 0.072056953292781
+        },
+        "correction": {
+          "scldl": 0.2089947089947089,
+          "knn": 0.1613756613756613
+        }
+      },
+      {
+        "rate": 0.5,
+        "acc_vs_true": {
+          "scldl": 0.219047619047619,
+          "knn": 0.1428571428571428,
+          "scldl_minus_knn": 0.0761904761904762
+        },
+        "discovery_auroc": {
+          "scldl": 0.515830183925422,
+          "knn": 0.4045842781557067,
+          "scldl_minus_knn": 0.11124590576971533
+        },
+        "correction": {
+          "scldl": 0.2285714285714285,
+          "knn": 0.1333333333333333
+        }
+      }
+    ]
+  },
+  "scldl_cross_tissue": {
+    "uniform": [
+      {
+        "rate": 0.0,
+        "hippo": {
+          "acc_vs_true": 0.5250924458531432,
+          "correction_rate": null,
+          "discovery_auroc_1m_p_given": null,
+          "discovery_ap_1m_p_given": null,
+          "discovery_auroc_entropy": null,
+          "discovery_auroc_vacuity": null,
+          "precision_at_nflip": null
+        },
+        "lymphnode": {
+          "acc_vs_true": 0.2555555555555555,
+          "correction_rate": null,
+          "discovery_auroc_1m_p_given": null,
+          "discovery_ap_1m_p_given": null,
+          "discovery_auroc_entropy": null,
+          "discovery_auroc_vacuity": null,
+          "precision_at_nflip": null
+        },
+        "delta_ln_minus_hippo": {
+          "acc_vs_true": -0.2695368902975877,
+          "correction_rate": null,
+          "discovery_auroc_1m_p_given": null,
+          "discovery_ap_1m_p_given": null,
+          "discovery_auroc_entropy": null,
+          "discovery_auroc_vacuity": null,
+          "precision_at_nflip": null
+        }
+      },
+      {
+        "rate": 0.1,
+        "hippo": {
+          "acc_vs_true": 0.5335446381405177,
+          "correction_rate": 0.5185185185185185,
+          "discovery_auroc_1m_p_given": 0.9233611545818118,
+          "discovery_ap_1m_p_given": 0.7228023086197212,
+          "discovery_auroc_entropy": 0.5080948654892317,
+          "discovery_auroc_vacuity": 0.4977395235611198,
+          "precision_at_nflip": 0.6984126984126984
+        },
+        "lymphnode": {
+          "acc_vs_true": 0.2396825396825397,
+          "correction_rate": 0.2698412698412698,
+          "discovery_auroc_1m_p_given": 0.6228689006466784,
+          "discovery_ap_1m_p_given": 0.1931568242632967,
+          "discovery_auroc_entropy": 0.4828322275412222,
+          "discovery_auroc_vacuity": 0.4750426919739089,
+          "precision_at_nflip": 0.246031746031746
+        },
+        "delta_ln_minus_hippo": {
+          "acc_vs_true": -0.29386209845797795,
+          "correction_rate": -0.24867724867724866,
+          "discovery_auroc_1m_p_given": -0.30049225393513335,
+          "discovery_ap_1m_p_given": -0.5296454843564244,
+          "discovery_auroc_entropy": -0.02526263794800948,
+          "discovery_auroc_vacuity": -0.022696831587210864,
+          "precision_at_nflip": -0.4523809523809524
+        }
+      },
+      {
+        "rate": 0.2,
+        "hippo": {
+          "acc_vs_true": 0.5330163761225568,
+          "correction_rate": 0.5145118733509235,
+          "discovery_auroc_1m_p_given": 0.924361195247174,
+          "discovery_ap_1m_p_given": 0.809353477751439,
+          "discovery_auroc_entropy": 0.4998222395722596,
+          "discovery_auroc_vacuity": 0.5104294831354151,
+          "precision_at_nflip": 0.7546174142480211
+        },
+        "lymphnode": {
+          "acc_vs_true": 0.2349206349206349,
+          "correction_rate": 0.238095238095238,
+          "discovery_auroc_1m_p_given": 0.6101151108591585,
+          "discovery_ap_1m_p_given": 0.2829648775102759,
+          "discovery_auroc_entropy": 0.5277344734189973,
+          "discovery_auroc_vacuity": 0.5074050453514739,
+          "precision_at_nflip": 0.2817460317460317
+        },
+        "delta_ln_minus_hippo": {
+          "acc_vs_true": -0.29809574120192195,
+          "correction_rate": -0.2764166352556855,
+          "discovery_auroc_1m_p_given": -0.3142460843880155,
+          "discovery_ap_1m_p_given": -0.5263886002411631,
+          "discovery_auroc_entropy": 0.02791223384673769,
+          "discovery_auroc_vacuity": -0.003024437783941236,
+          "precision_at_nflip": -0.4728713825019894
+        }
+      },
+      {
+        "rate": 0.3,
+        "hippo": {
+          "acc_vs_true": 0.5108293713681986,
+          "correction_rate": 0.523725834797891,
+          "discovery_auroc_1m_p_given": 0.9114508943978678,
+          "discovery_ap_1m_p_given": 0.8417807345124952,
+          "discovery_auroc_entropy": 0.4895852691157965,
+          "discovery_auroc_vacuity": 0.4993741338756179,
+          "precision_at_nflip": 0.7609841827768014
+        },
+        "lymphnode": {
+          "acc_vs_true": 0.2261904761904762,
+          "correction_rate": 0.1878306878306878,
+          "discovery_auroc_1m_p_given": 0.6018098597463677,
+          "discovery_ap_1m_p_given": 0.3914361211263792,
+          "discovery_auroc_entropy": 0.4899488896087536,
+          "discovery_auroc_vacuity": 0.5058668970233595,
+          "precision_at_nflip": 0.4021164021164021
+        },
+        "delta_ln_minus_hippo": {
+          "acc_vs_true": -0.28463889517772245,
+          "correction_rate": -0.33589514696720324,
+          "discovery_auroc_1m_p_given": -0.30964103465150006,
+          "discovery_ap_1m_p_given": -0.45034461338611603,
+          "discovery_auroc_entropy": 0.0003636204929571285,
+          "discovery_auroc_vacuity": 0.006492763147741609,
+          "precision_at_nflip": -0.35886778066039926
+        }
+      },
+      {
+        "rate": 0.5,
+        "hippo": {
+          "acc_vs_true": 0.4712097200211305,
+          "correction_rate": 0.459830866807611,
+          "discovery_auroc_1m_p_given": 0.8893880977204078,
+          "discovery_ap_1m_p_given": 0.8895776002162699,
+          "discovery_auroc_entropy": 0.494463432984098,
+          "discovery_auroc_vacuity": 0.5003538491419438,
+          "precision_at_nflip": 0.8044397463002114
+        },
+        "lymphnode": {
+          "acc_vs_true": 0.2142857142857142,
+          "correction_rate": 0.2111111111111111,
+          "discovery_auroc_1m_p_given": 0.6139380196523053,
+          "discovery_ap_1m_p_given": 0.602476675409904,
+          "discovery_auroc_entropy": 0.4959234063995968,
+          "discovery_auroc_vacuity": 0.5203325774754346,
+          "precision_at_nflip": 0.5714285714285714
+        },
+        "delta_ln_minus_hippo": {
+          "acc_vs_true": -0.2569240057354163,
+          "correction_rate": -0.24871975569649987,
+          "discovery_auroc_1m_p_given": -0.2754500780681025,
+          "discovery_ap_1m_p_given": -0.28710092480636584,
+          "discovery_auroc_entropy": 0.0014599734154988053,
+          "discovery_auroc_vacuity": 0.01997872833349079,
+          "precision_at_nflip": -0.23301117487164003
+        }
+      }
+    ],
+    "similar": [
+      {
+        "rate": 0.0,
+        "hippo": {
+          "acc_vs_true": 0.5356576862123613,
+          "correction_rate": null,
+          "discovery_auroc_1m_p_given": null,
+          "discovery_ap_1m_p_given": null,
+          "discovery_auroc_entropy": null,
+          "discovery_auroc_vacuity": null,
+          "precision_at_nflip": null
+        },
+        "lymphnode": {
+          "acc_vs_true": 0.2452380952380952,
+          "correction_rate": null,
+          "discovery_auroc_1m_p_given": null,
+          "discovery_ap_1m_p_given": null,
+          "discovery_auroc_entropy": null,
+          "discovery_auroc_vacuity": null,
+          "precision_at_nflip": null
+        },
+        "delta_ln_minus_hippo": {
+          "acc_vs_true": -0.2904195909742661,
+          "correction_rate": null,
+          "discovery_auroc_1m_p_given": null,
+          "discovery_ap_1m_p_given": null,
+          "discovery_auroc_entropy": null,
+          "discovery_auroc_vacuity": null,
+          "precision_at_nflip": null
+        }
+      },
+      {
+        "rate": 0.1,
+        "hippo": {
+          "acc_vs_true": 0.5409403063919704,
+          "correction_rate": 0.5502645502645502,
+          "discovery_auroc_1m_p_given": 0.818006806269717,
+          "discovery_ap_1m_p_given": 0.4420753636292036,
+          "discovery_auroc_entropy": 0.518400526616489,
+          "discovery_auroc_vacuity": 0.4764171448443748,
+          "precision_at_nflip": 0.4391534391534391
+        },
+        "lymphnode": {
+          "acc_vs_true": 0.2587301587301587,
+          "correction_rate": 0.246031746031746,
+          "discovery_auroc_1m_p_given": 0.5943772570756698,
+          "discovery_ap_1m_p_given": 0.1208462441794627,
+          "discovery_auroc_entropy": 0.4727716189356401,
+          "discovery_auroc_vacuity": 0.477047815010778,
+          "precision_at_nflip": 0.1349206349206349
+        },
+        "delta_ln_minus_hippo": {
+          "acc_vs_true": -0.28221014766181174,
+          "correction_rate": -0.30423280423280424,
+          "discovery_auroc_1m_p_given": -0.2236295491940472,
+          "discovery_ap_1m_p_given": -0.32122911944974086,
+          "discovery_auroc_entropy": -0.04562890768084893,
+          "discovery_auroc_vacuity": 0.0006306701664031689,
+          "precision_at_nflip": -0.3042328042328042
+        }
+      },
+      {
+        "rate": 0.2,
+        "hippo": {
+          "acc_vs_true": 0.502905441098785,
+          "correction_rate": 0.496042216358839,
+          "discovery_auroc_1m_p_given": 0.7654329163515197,
+          "discovery_ap_1m_p_given": 0.4853019689774889,
+          "discovery_auroc_entropy": 0.4972063728856094,
+          "discovery_auroc_vacuity": 0.5116014820339976,
+          "precision_at_nflip": 0.4643799472295514
+        },
+        "lymphnode": {
+          "acc_vs_true": 0.2357142857142857,
+          "correction_rate": 0.1944444444444444,
+          "discovery_auroc_1m_p_given": 0.563980221718317,
+          "discovery_ap_1m_p_given": 0.218362175603248,
+          "discovery_auroc_entropy": 0.5084443499622071,
+          "discovery_auroc_vacuity": 0.4879377676996724,
+          "precision_at_nflip": 0.2222222222222222
+        },
+        "delta_ln_minus_hippo": {
+          "acc_vs_true": -0.2671911553844993,
+          "correction_rate": -0.30159777191439463,
+          "discovery_auroc_1m_p_given": -0.2014526946332027,
+          "discovery_ap_1m_p_given": -0.2669397933742409,
+          "discovery_auroc_entropy": 0.011237977076597683,
+          "discovery_auroc_vacuity": -0.02366371433432518,
+          "precision_at_nflip": -0.24215772500732918
+        }
+      },
+      {
+        "rate": 0.3,
+        "hippo": {
+          "acc_vs_true": 0.5187533016376122,
+          "correction_rate": 0.5325131810193322,
+          "discovery_auroc_1m_p_given": 0.7059199103743781,
+          "discovery_ap_1m_p_given": 0.5321954225589738,
+          "discovery_auroc_entropy": 0.4917077716245706,
+          "discovery_auroc_vacuity": 0.5128398791540786,
+          "precision_at_nflip": 0.4481546572934973
+        },
+        "lymphnode": {
+          "acc_vs_true": 0.2206349206349206,
+          "correction_rate": 0.2089947089947089,
+          "discovery_auroc_1m_p_given": 0.5093552412146516,
+          "discovery_ap_1m_p_given": 0.2945127129826971,
+          "discovery_auroc_entropy": 0.5187209804556743,
+          "discovery_auroc_vacuity": 0.4885016616876027,
+          "precision_at_nflip": 0.2962962962962963
+        },
+        "delta_ln_minus_hippo": {
+          "acc_vs_true": -0.2981183810026916,
+          "correction_rate": -0.3235184720246233,
+          "discovery_auroc_1m_p_given": -0.19656466915972648,
+          "discovery_ap_1m_p_given": -0.23768270957627669,
+          "discovery_auroc_entropy": 0.027013208831103697,
+          "discovery_auroc_vacuity": -0.02433821746647591,
+          "precision_at_nflip": -0.15185836099720101
+        }
+      },
+      {
+        "rate": 0.5,
+        "hippo": {
+          "acc_vs_true": 0.3301637612255679,
+          "correction_rate": 0.3298097251585624,
+          "discovery_auroc_1m_p_given": 0.5856158649434846,
+          "discovery_ap_1m_p_given": 0.6158250841145843,
+          "discovery_auroc_entropy": 0.5057162821952489,
+          "discovery_auroc_vacuity": 0.501243495091878,
+          "precision_at_nflip": 0.5232558139534884
+        },
+        "lymphnode": {
+          "acc_vs_true": 0.219047619047619,
+          "correction_rate": 0.2285714285714285,
+          "discovery_auroc_1m_p_given": 0.515830183925422,
+          "discovery_ap_1m_p_given": 0.487340314456967,
+          "discovery_auroc_entropy": 0.4824414210128496,
+          "discovery_auroc_vacuity": 0.5021164021164021,
+          "precision_at_nflip": 0.5047619047619047
+        },
+        "delta_ln_minus_hippo": {
+          "acc_vs_true": -0.1111161421779489,
+          "correction_rate": -0.10123829658713387,
+          "discovery_auroc_1m_p_given": -0.0697856810180626,
+          "discovery_ap_1m_p_given": -0.12848476965761724,
+          "discovery_auroc_entropy": -0.023274861182399298,
+          "discovery_auroc_vacuity": 0.0008729070245240278,
+          "precision_at_nflip": -0.01849390919158367
+        }
+      }
+    ]
+  },
+  "what_holds": [
+    {
+      "claim": "scLDL beats kNN on OOF accuracy vs true labels",
+      "hippo": true,
+      "lymphnode": true,
+      "note": "LN gaps are smaller but the sign is the same at every rate in both noise modes."
+    },
+    {
+      "claim": "scLDL beats kNN on discovery AUROC of 1-p(given)",
+      "hippo": true,
+      "lymphnode": true,
+      "note": "LN uniform 30% gap is small (0.602 vs 0.587). Similar-type: kNN falls to or below chance; scLDL stays slightly above."
+    },
+    {
+      "claim": "Entropy and vacuity AUROC stay near 0.5 and do not discover flips",
+      "hippo": true,
+      "lymphnode": true
+    },
+    {
+      "claim": "Similar-type swaps are harder to discover than uniform flips",
+      "hippo": true,
+      "lymphnode": true,
+      "note": "LN uniform AUROC ~0.60-0.62 vs similar ~0.51-0.59."
+    },
+    {
+      "claim": "Correction rate is limited by identity accuracy, not a separate recovery skill",
+      "hippo": true,
+      "lymphnode": true
+    },
+    {
+      "claim": "Blended scLDL and model-only scores match",
+      "hippo": true,
+      "lymphnode": true
+    }
+  ],
+  "what_does_not_hold": [
+    {
+      "claim": "Discovery AUROC of random flips is high (~0.89-0.92)",
+      "hippo_uniform_range": [
+        0.889,
+        0.924
+      ],
+      "lymphnode_uniform_range": [
+        0.602,
+        0.623
+      ],
+      "note": "High AUROC required a model that already separated types (hippo clean acc 0.53). LN clean acc is 0.26 vs 7-class chance 0.14."
+    },
+    {
+      "claim": "Precision@k at 10% uniform noise is useful (~0.70)",
+      "hippo": 0.698,
+      "lymphnode": 0.246
+    },
+    {
+      "claim": "Clean OOF accuracy in the 0.5 range",
+      "hippo": 0.525,
+      "lymphnode": 0.256,
+      "note": "LN T-subset labels (Resting T/CD8/Tfh/Treg/Th2) are weakly separable on this panel under the same protocol."
+    },
+    {
+      "claim": "Correction restores a large fraction of flips",
+      "hippo_uniform_10pct": 0.519,
+      "lymphnode_uniform_10pct": 0.27
+    },
+    {
+      "claim": "kNN discovery remains strong at 50% uniform noise",
+      "hippo_knn": 0.794,
+      "lymphnode_knn": 0.515
+    },
+    {
+      "claim": "At 50% similar-type noise scLDL discovery stays clearly above chance",
+      "hippo": 0.586,
+      "lymphnode": 0.516
+    }
+  ],
+  "interpretation": "The hippo misannotation results that survive are comparative (scLDL > kNN; similar harder than uniform; entropy unused). The absolute discovery/correction numbers do not transfer to a Slide-seqV2 lymph-node puck where identity itself is weak. Label-noise recovery is gated by whether the types are linearly/PCA-separable, not by a general noise-robustness property of the evidential head."
+}
