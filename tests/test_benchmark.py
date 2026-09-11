@@ -10,9 +10,10 @@ from scLDL.metrics import score_annotations
 def _blob_adata(n=90, n_genes=30, n_classes=3, seed=0):
     rng = np.random.default_rng(seed)
     y = rng.integers(0, n_classes, size=n)
-    means = rng.normal(size=(n_classes, n_genes)) * 2.8
-    x = means[y] + rng.normal(scale=0.35, size=(n, n_genes))
-    adata = AnnData(x.astype(np.float32))
+    means = rng.normal(size=(n_classes, n_genes)) * 1.6
+    x = np.exp(means[y] + rng.normal(scale=0.25, size=(n, n_genes)))
+    x = np.log1p(x / x.sum(axis=1, keepdims=True) * 1e4).astype(np.float32)
+    adata = AnnData(x)
     adata.obs["cell_type"] = [f"type_{i}" for i in y]
     adata.var_names = [f"g{i}" for i in range(n_genes)]
     adata.obs_names = [f"c{i}" for i in range(n)]
@@ -103,3 +104,19 @@ def test_core_method_names():
     assert "scanpy_ingest" in CORE_METHODS
     assert "scldl_concentration" in CORE_METHODS
     assert "majority" in CORE_METHODS
+
+
+def test_celltypist_runs_if_installed():
+    pytest.importorskip("celltypist")
+    adata = _blob_adata(n=120, n_genes=40, n_classes=3, seed=1)
+    results = run_benchmark(
+        adata,
+        label_key="cell_type",
+        methods=["celltypist", "logistic"],
+        n_top_genes=40,
+        n_repeats=1,
+        verbose=False,
+    )
+    ok = results[results["status"] == "ok"].set_index("method")
+    assert "celltypist" in ok.index
+    assert ok.loc["celltypist", "accuracy"] > 0.7

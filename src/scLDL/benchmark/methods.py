@@ -210,18 +210,42 @@ class CellTypistMethod:
     name = "celltypist"
     features = "log"
 
+    def __init__(self, sgd_min_cells: int = 8000):
+        self.sgd_min_cells = int(sgd_min_cells)
+        self.var_names = None
+
+    def _gene_names(self, n_vars: int):
+        names = self.var_names
+        if names is None or len(names) != n_vars:
+            return np.array([f"g{i}" for i in range(n_vars)], dtype=object)
+        return np.asarray(names).astype(str)
+
     def fit(self, X, y, classes):
         import celltypist
 
         self.classes_ = np.asarray(classes)
-        self.model_ = celltypist.train(X, np.asarray(y).astype(str), use_SGD=False, feature_selection=False, check_expression=False)
+        genes = self._gene_names(X.shape[1])
+        self.var_names = genes
+        use_sgd = len(y) >= self.sgd_min_cells
+        self.model_ = celltypist.train(
+            np.asarray(X, dtype=np.float32),
+            labels=np.asarray(y).astype(str),
+            genes=genes,
+            use_SGD=use_sgd,
+            feature_selection=False,
+            check_expression=False,
+            n_jobs=1,
+        )
         return self
 
     def predict_proba(self, X):
         import anndata as ad
         import celltypist
 
-        query = ad.AnnData(X)
+        genes = self._gene_names(X.shape[1])
+        query = ad.AnnData(np.asarray(X, dtype=np.float32))
+        query.var_names = genes
+        query.var_names_make_unique()
         pred = celltypist.annotate(query, model=self.model_, majority_voting=False)
         probs = pred.probability_matrix.reindex(columns=list(self.classes_), fill_value=0.0).to_numpy(dtype=np.float64)
         return expand_proba(probs, self.classes_, self.classes_)
@@ -334,6 +358,8 @@ def features_for(method, data: BenchmarkData):
 
 def run_method(method, data: BenchmarkData) -> dict:
     x_train, x_test = features_for(method, data)
+    if hasattr(method, "var_names"):
+        method.var_names = np.asarray(data.var_names).astype(str)
     t0 = time.perf_counter()
     method.fit(x_train, data.y_train, data.classes)
     fit_s = time.perf_counter() - t0
