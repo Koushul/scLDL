@@ -178,8 +178,8 @@ class ScanpyIngest:
 class SCLDLMethod:
     features = "log"
 
-    def __init__(self, model: str, **kwargs):
-        self.name = f"scldl_{model}"
+    def __init__(self, model: str, name: str | None = None, **kwargs):
+        self.name = name or f"scldl_{model}"
         self.model_name = model
         self.kwargs = kwargs
 
@@ -309,6 +309,7 @@ def build_method(name: str, epochs: int = 40, n_hidden: int = 128, batch_size: i
     if name == "scldl_interpretable":
         return SCLDLMethod(
             "scldl",
+            name="scldl_interpretable",
             n_hidden=n_hidden,
             epochs=epochs,
             batch_size=batch_size,

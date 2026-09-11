@@ -1,0 +1,59 @@
+{
+  "datasets": {
+    "pancreas": {
+      "n": 3696,
+      "n_vars": 27997,
+      "types": {
+        "Ductal": 916,
+        "Ngn3 high EP": 642,
+        "Pre-endocrine": 592,
+        "Beta": 591,
+        "Alpha": 481,
+        "Ngn3 low EP": 262,
+        "Epsilon": 142,
+        "Delta": 70
+      }
+    },
+    "hippo": {
+      "n": 10266,
+      "n_vars": 20526,
+      "types": {
+        "Oligodendrocyte": 2847,
+        "Astrocyte": 1700,
+        "Entorhinal": 1252,
+        "DG": 1055,
+        "CA1": 890,
+        "CA3": 795,
+        "Interneuron": 786,
+        "Neurogenesis": 488,
+        "OPC": 130,
+        "Microglia": 105,
+        "Choroid": 79,
+        "Ependymal": 70,
+        "Endothelial": 69
+      }
+    },
+    "lymphnode": {
+      "n": 2622,
+      "n_vars": 3128,
+      "types": {
+        "CD8+ T": 400,
+        "B": 400,
+        "Resting T": 400,
+        "Treg": 400,
+        "Th2": 400,
+        "Tfh": 400,
+        "DC": 222
+      }
+    }
+  },
+  "methods": [
+    "majority",
+    "logistic",
+    "pca_knn",
+    "celltypist",
+    "scldl_mlp",
+    "scldl_interpretable"
+  ],
+  "repeats": 3
+}
