@@ -60,11 +60,11 @@ def test_precision_at_k_and_recovery_metrics():
     assert precision_at_k(y_true != y_noisy, 1.0 - mass_on_label(proba, y_noisy, ["A", "B"]), 2) == 1.0
 
 
-def _blob_adata(n=120, n_genes=18, n_classes=3, seed=0):
+def _blob_adata(n=120, n_genes=18, n_classes=3, seed=0, scale=0.25, sep=3.2):
     rng = np.random.default_rng(seed)
     y = np.repeat(np.arange(n_classes), n // n_classes)
-    means = rng.normal(size=(n_classes, n_genes)) * 3.2
-    x = means[y] + rng.normal(scale=0.25, size=(len(y), n_genes))
+    means = rng.normal(size=(n_classes, n_genes)) * sep
+    x = means[y] + rng.normal(scale=scale, size=(len(y), n_genes))
     adata = AnnData(x.astype(np.float32))
     adata.obs["cell_type"] = [f"type_{i}" for i in y]
     adata.var_names = [f"g{i}" for i in range(n_genes)]
@@ -110,3 +110,48 @@ def test_oof_scldl_recovers_uniform_flips():
     assert metrics["correction_rate"] > 0.7
     assert metrics["discovery_auroc_1m_p_given"] > 0.8
     assert metrics["acc_vs_true"] > 0.8
+
+
+def test_label_smooth_improves_noisy_type_fit():
+    from sklearn.model_selection import StratifiedKFold
+
+    adata = _blob_adata(n=180, n_genes=16, n_classes=3, seed=1, scale=0.9, sep=1.6)
+    y_true = adata.obs["cell_type"].to_numpy()
+    rng = np.random.default_rng(4)
+    noisy, _ = flip_labels(y_true, 0.4, rng, mode="uniform")
+    adata.obs["cell_type"] = noisy
+    n = adata.n_obs
+    classes = np.unique(noisy)
+
+    def _oof(smooth):
+        proba = np.zeros((n, len(classes)), dtype=np.float32)
+        pred = np.empty(n, dtype=object)
+        skf = StratifiedKFold(n_splits=3, shuffle=True, random_state=0)
+        for tr, te in skf.split(np.zeros(n), noisy):
+            pipe = AnnotationPipeline(
+                model="scldl",
+                n_top_genes=50,
+                n_pcs=8,
+                n_neighbors=8,
+                n_hidden=32,
+                epochs=16,
+                batch_size=16,
+                verbose=False,
+                query_correct="none",
+                spatial="off",
+                graph_refine="off",
+                label_smooth=smooth,
+            )
+            pipe.fit(adata[tr].copy(), label_key="cell_type")
+            out = pipe.annotate(adata[te].copy(), copy=True)
+            proba[te] = align_proba(out.obsm["X_scldl"], pipe.classes_, classes)
+            pred[te] = out.obs["scldl_pred"].to_numpy()
+            if smooth == "on":
+                assert pipe.last_label_smooth_ == "on"
+        return noise_recovery_metrics(y_true, noisy, pred, proba, classes)
+
+    hard = _oof("off")
+    robust = _oof("on")
+    assert robust["acc_vs_true"] >= hard["acc_vs_true"]
+    assert robust["correction_rate"] >= hard["correction_rate"]
+    assert robust["acc_vs_true"] > 0.85

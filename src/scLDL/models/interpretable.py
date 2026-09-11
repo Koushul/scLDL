@@ -27,6 +27,8 @@ class InterpretableLE(StateConcentrationLE):
         illegal_weight=0.0,
         marker_kl_weight=0.0,
         peak_weight=0.0,
+        gce_q=0.0,
+        gce_weight=0.35,
         **kwargs,
     ):
         super().__init__(n_features=n_features, n_outputs=n_outputs, **kwargs)
@@ -34,6 +36,8 @@ class InterpretableLE(StateConcentrationLE):
         self.illegal_weight = illegal_weight
         self.marker_kl_weight = marker_kl_weight
         self.peak_weight = peak_weight
+        self.gce_q = float(gce_q)
+        self.gce_weight = float(gce_weight)
         if self.n_concepts > 0:
             self.concept_map = nn.Linear(self.n_concepts, n_outputs, bias=False)
             nn.init.zeros_(self.concept_map.weight)
@@ -64,11 +68,16 @@ class InterpretableLE(StateConcentrationLE):
         p = torch.clamp(mean, 1e-8, 1.0)
         return -torch.mean(torch.sum(p * torch.log(p), dim=1))
 
-    def fit(self, X, L, neighbor_p=None, concepts=None):
+    def fit(self, X, L, neighbor_p=None, concepts=None, sample_weight=None):
         X_t, L_t = to_float_tensors(X, L, self.device)
         L_t = torch.clamp(L_t, min=0)
         L_t = L_t / torch.clamp(L_t.sum(dim=1, keepdim=True), min=1e-6)
         idx_t = torch.arange(len(X_t), device=self.device)
+        W_t = None
+        if sample_weight is not None:
+            W_t = torch.as_tensor(sample_weight, dtype=torch.float32, device=self.device)
+            W_t = torch.clamp(W_t, min=0.05)
+            W_t = W_t / torch.clamp(W_t.mean(), min=1e-6)
         if concepts is None:
             C_t = torch.zeros((len(X_t), max(self.n_concepts, 1)), device=self.device)
         else:
@@ -114,11 +123,19 @@ class InterpretableLE(StateConcentrationLE):
                 h, _, alpha = self.forward(batch_x, c_fwd)
                 mean = alpha / torch.sum(alpha, dim=1, keepdim=True)
                 weights = self._sample_weights(batch_l)
+                if W_t is not None:
+                    weights = weights * W_t[batch_i]
+                    weights = weights * (weights.numel() / torch.clamp(weights.sum(), min=1e-6))
                 s = torch.sum(alpha, dim=1, keepdim=True)
                 m = alpha / s
                 sq = torch.sum((batch_l - m) ** 2, dim=1)
                 var = torch.sum(alpha * (s - alpha) / (s * s * (s + 1)), dim=1)
-                loss = torch.mean((sq + var) * weights)
+                nll = torch.mean((sq + var) * weights)
+                if self.gce_q > 0:
+                    p = torch.clamp(m, 1e-8, 1.0)
+                    gce = torch.sum(batch_l * (1.0 - p.pow(self.gce_q)) / self.gce_q, dim=1)
+                    nll = (1.0 - self.gce_weight) * nll + self.gce_weight * torch.mean(gce * weights)
+                loss = nll
                 if self.kl_weight:
                     loss = loss + self.kl_weight * self._kl_target_pred(batch_l, mean)
                 if self.lineage_weight:

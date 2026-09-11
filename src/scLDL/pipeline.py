@@ -21,7 +21,7 @@ from scLDL.models import ANNOTATION_MODELS
 from scLDL.neighbors import query_label_transfer
 from scLDL.spatial import try_spatial_xy
 from scLDL.spatial_smooth import spatial_refine
-from scLDL.state_targets import blend_targets, knn_smooth_labels, marker_targets
+from scLDL.state_targets import blend_targets, knn_smooth_labels, marker_targets, robust_type_targets
 
 
 class AnnotationPipeline:
@@ -38,6 +38,9 @@ class AnnotationPipeline:
         After blending, ``graph_refine="auto"`` smooths the simplex on the query
         neighborhood graph whenever the query has coordinates. ``supervised_mnn``
         stays off: a type-restricted second MNN pass can kidnap similar subtypes.
+        ``label_smooth="auto"`` (type task) replaces hard one-hots with neighbor
+        consensus and downweights cells whose neighbors disagree with the given
+        label, which is the main defense against misannotation.
     """
 
     def __init__(
@@ -59,6 +62,7 @@ class AnnotationPipeline:
         spatial: str = "auto",
         graph_refine: str = "auto",
         supervised_mnn: str = "off",
+        label_smooth: str = "auto",
         **model_kwargs,
     ):
         if model not in ANNOTATION_MODELS:
@@ -71,6 +75,8 @@ class AnnotationPipeline:
             raise ValueError("graph_refine must be 'auto', 'on', or 'off'")
         if supervised_mnn not in {"auto", "on", "off"}:
             raise ValueError("supervised_mnn must be 'auto', 'on', or 'off'")
+        if label_smooth not in {"auto", "on", "off"}:
+            raise ValueError("label_smooth must be 'auto', 'on', or 'off'")
         self.model_name = model
         self.task = task
         self.n_top_genes = n_top_genes
@@ -88,6 +94,7 @@ class AnnotationPipeline:
         self.spatial = spatial
         self.graph_refine = graph_refine
         self.supervised_mnn = supervised_mnn
+        self.label_smooth = label_smooth
         self.model_kwargs = model_kwargs
         self.estimator_ = None
         self.embed_ = None
@@ -100,9 +107,17 @@ class AnnotationPipeline:
         self.last_spatial_ = "off"
         self.last_graph_refine_ = "off"
         self.last_supervised_mnn_ = False
+        self.last_label_smooth_ = "off"
 
     def _is_scldl(self):
         return self.model_name in {"scldl", "interpretable"}
+
+    def _use_label_smooth(self):
+        if self.label_smooth == "off":
+            return False
+        if self.label_smooth == "on":
+            return True
+        return self.task == "type" and self._is_scldl()
 
     def _marker_matrix(self, expr, gene_names):
         if not self.markers or self.classes_ is None:
@@ -133,6 +148,8 @@ class AnnotationPipeline:
             x_model = x_log
 
         concepts = self._marker_matrix(x_log, self.var_names_) if self.task == "state" else None
+        sample_weight = None
+        neighbor_p = None
         if self.task == "state":
             graph, neighbor_p = knn_smooth_labels(
                 x_model,
@@ -148,9 +165,17 @@ class AnnotationPipeline:
             if concepts is not None:
                 parts.append((concepts, 0.30))
             targets = blend_targets(*parts)
+            self.last_label_smooth_ = "state"
+        elif self._use_label_smooth():
+            targets, sample_weight, neighbor_p, _ = robust_type_targets(
+                x_model,
+                y_onehot,
+                n_neighbors=self.n_neighbors,
+            )
+            self.last_label_smooth_ = "on"
         else:
-            neighbor_p = None
             targets = y_onehot
+            self.last_label_smooth_ = "off"
 
         cls = ANNOTATION_MODELS[self.model_name]
         params = dict(
@@ -172,9 +197,10 @@ class AnnotationPipeline:
                 peak_weight=0.08 if self.task == "type" else 0.0,
                 mixup_alpha=0.0 if self.task == "type" else 0.3,
                 lineage_weight=0.35 if self.task == "state" and self.lineage_edges else 0.0,
-                manifold_weight=0.10 if self.task == "state" else 0.0,
+                manifold_weight=0.08 if self.task == "type" and self._use_label_smooth() else (0.10 if self.task == "state" else 0.0),
                 vacuity_weight=0.08 if self.task == "state" else 0.0,
                 kl_weight=0.2 if self.task == "state" else 0.05,
+                gce_q=0.7 if self.task == "type" and self._use_label_smooth() else 0.0,
             )
         elif self.model_name == "state_concentration":
             params.update(lineage_edges=self.lineage_edges if self.task == "state" else None)
@@ -185,11 +211,12 @@ class AnnotationPipeline:
         if self._is_scldl():
             extra_fit["concepts"] = concepts
             extra_fit["neighbor_p"] = neighbor_p
+            extra_fit["sample_weight"] = sample_weight
         elif self.model_name == "state_concentration":
             extra_fit["neighbor_p"] = neighbor_p
         self.estimator_ = cls(**params)
         self.estimator_.fit(x_model, targets, **{k: v for k, v in extra_fit.items() if v is not None or k == "concepts"})
-        self.Y_ref_ = y_onehot
+        self.Y_ref_ = targets
         self.x_log_ref_ = x_log
         return self
 

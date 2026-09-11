@@ -6,6 +6,7 @@ from scLDL.state_targets import (
     lineage_laplacian,
     pancreas_lineage_edges,
     probabilistic_neighbors,
+    robust_type_targets,
 )
 
 
@@ -38,6 +39,24 @@ def test_probabilistic_neighbors_row_stochastic():
     assert np.allclose(adaptive.sum(axis=1), 1.0, atol=1e-5)
     assert np.allclose(S.sum(axis=1), 1.0, atol=1e-5)
     assert not np.allclose(adaptive, legacy, atol=1e-4)
+
+
+def test_robust_type_targets_downweight_isolated_flips():
+    rng = np.random.default_rng(0)
+    y = np.repeat(np.arange(3), 40)
+    X = rng.normal(scale=0.2, size=(120, 8)).astype(np.float32)
+    X += np.eye(3, 8, dtype=np.float32)[y] * 4
+    Y = np.eye(3, dtype=np.float32)[y]
+    noisy = Y.copy()
+    flip = np.zeros(120, dtype=bool)
+    flip[::10] = True
+    for i in np.flatnonzero(flip):
+        noisy[i] = 0
+        noisy[i, (y[i] + 1) % 3] = 1
+    _, weights, _, smoothed = robust_type_targets(X, noisy, n_neighbors=8, n_iter=8)
+    assert weights[flip].mean() < weights[~flip].mean()
+    true_mass = smoothed[np.arange(120), y]
+    assert true_mass[flip].mean() > 0.4
 
 
 def test_state_model_predicts_simplex():

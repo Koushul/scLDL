@@ -51,6 +51,7 @@ def load_slideseq_singlets(min_class: int = 50, max_per_class: int | None = 200,
 
 
 def _pipe_kwargs(args):
+    variant = getattr(args, "variant", "baseline")
     return dict(
         model="scldl",
         task="type",
@@ -65,6 +66,7 @@ def _pipe_kwargs(args):
         spatial="off" if not args.spatial else "auto",
         graph_refine="off" if not args.graph_refine else "auto",
         supervised_mnn="off",
+        label_smooth="on" if variant == "robust" else "off",
     )
 
 
@@ -117,6 +119,8 @@ def evaluate_fraction(adata, y_true, rate, args):
         row["noise_mode"] = args.noise
         row["requested_rate"] = float(rate)
         row["realized_flips"] = int(flipped.sum())
+        row["variant"] = getattr(args, "variant", "baseline")
+        row["seed"] = int(args.seed)
         rows.append(row)
     return rows, {"noisy": noisy, "flipped": flipped, "parts": parts, "classes": classes}
 
@@ -143,7 +147,56 @@ def plot_curves(df, path):
     plt.close(fig)
 
 
-def _json_ready(obj):
+def paired_tests(df):
+    from scipy import stats
+
+    rows = []
+    keep = df[df["source"] == "scldl"].copy()
+    for (mode, rate), sub in keep.groupby(["noise_mode", "requested_rate"]):
+        base = sub[sub["variant"] == "baseline"].sort_values("seed")
+        rob = sub[sub["variant"] == "robust"].sort_values("seed")
+        merged = base.merge(rob, on="seed", suffixes=("_base", "_rob"))
+        if merged.empty:
+            continue
+        rec = {"noise_mode": mode, "requested_rate": float(rate), "n_seeds": int(len(merged))}
+        for metric in ["acc_vs_true", "correction_rate", "discovery_auroc_1m_p_given"]:
+            a = merged[f"{metric}_base"].to_numpy(dtype=float)
+            b = merged[f"{metric}_rob"].to_numpy(dtype=float)
+            ok = np.isfinite(a) & np.isfinite(b)
+            a, b = a[ok], b[ok]
+            rec[f"{metric}_baseline"] = float(np.mean(a)) if len(a) else None
+            rec[f"{metric}_robust"] = float(np.mean(b)) if len(b) else None
+            rec[f"{metric}_delta"] = float(np.mean(b - a)) if len(a) else None
+            if len(a) >= 2 and np.std(b - a) > 1e-12:
+                rec[f"{metric}_p_paired"] = float(stats.ttest_rel(b, a).pvalue)
+            else:
+                rec[f"{metric}_p_paired"] = None
+        rows.append(rec)
+    return rows
+
+
+def plot_compare(df, path):
+    fig, axes = plt.subplots(1, 3, figsize=(11.2, 3.6))
+    metrics = [
+        ("correction_rate", "correction rate"),
+        ("discovery_auroc_1m_p_given", "discovery AUROC"),
+        ("acc_vs_true", "accuracy vs true"),
+    ]
+    sub = df[df["source"] == "scldl"]
+    for ax, (col, ylab) in zip(axes, metrics):
+        for variant, color in (("baseline", "#4c4c4c"), ("robust", "#234e70")):
+            part = sub[sub["variant"] == variant]
+            if part.empty:
+                continue
+            g = part.groupby("requested_rate")[col].agg(["mean", "std"])
+            ax.errorbar(g.index, g["mean"], yerr=g["std"].fillna(0), marker="o", label=variant, color=color)
+        ax.set_xlabel("flip fraction")
+        ax.set_ylabel(ylab)
+        ax.grid(True, alpha=0.3)
+        ax.legend(fontsize=8, frameon=False)
+    fig.tight_layout()
+    fig.savefig(path, dpi=160, bbox_inches="tight")
+    plt.close(fig)
     if isinstance(obj, dict):
         return {k: _json_ready(v) for k, v in obj.items()}
     if isinstance(obj, list):
@@ -176,6 +229,8 @@ def main():
     p.add_argument("--n-hidden", type=int, default=128)
     p.add_argument("--batch-size", type=int, default=128)
     p.add_argument("--seed", type=int, default=0)
+    p.add_argument("--seeds", default=None)
+    p.add_argument("--variant", choices=["baseline", "robust", "compare"], default="baseline")
     p.add_argument("--spatial", action="store_true")
     p.add_argument("--graph-refine", action="store_true")
     p.add_argument("--verbose", action="store_true")
@@ -183,6 +238,12 @@ def main():
     OUT.mkdir(parents=True, exist_ok=True)
     adata = load_slideseq_singlets(min_class=args.min_class, max_per_class=args.max_per_class, seed=args.seed)
     y_true = adata.obs["cell_type"].astype(str).to_numpy()
+    if args.variant == "compare":
+        variants = ["baseline", "robust"]
+        seeds = [int(x) for x in (args.seeds or "0,1,2").split(",") if x.strip()]
+    else:
+        variants = [args.variant]
+        seeds = [int(x) for x in args.seeds.split(",")] if args.seeds else [args.seed]
     meta = {
         "n": int(adata.n_obs),
         "types": adata.obs["cell_type"].value_counts().to_dict(),
@@ -190,27 +251,46 @@ def main():
         "folds": args.folds,
         "epochs": args.epochs,
         "max_per_class": args.max_per_class,
+        "variants": variants,
+        "seeds": seeds,
     }
     print(json.dumps({"loaded": meta}, indent=2))
     fractions = [float(x) for x in args.fractions.split(",") if x.strip()]
     rows = []
-    for rate in fractions:
-        print(f"\n=== flip rate {rate} ({args.noise}) ===", flush=True)
-        part_rows, _ = evaluate_fraction(adata, y_true, rate, args)
-        for row in part_rows:
-            print(
-                f"{row['source']:12s}  acc_true={row['acc_vs_true']:.3f}  "
-                f"correct={_fmt(row['correction_rate'])}  "
-                f"auroc={_fmt(row['discovery_auroc_1m_p_given'])}  "
-                f"P@k={_fmt(row['precision_at_nflip'])}",
-                flush=True,
-            )
-        rows.extend(part_rows)
-        (OUT / "metrics.json").write_text(json.dumps(_json_ready({"meta": meta, "rows": rows}), indent=2), encoding="utf-8")
+    from copy import copy
+
+    for seed in seeds:
+        for variant in variants:
+            run_args = copy(args)
+            run_args.seed = seed
+            run_args.variant = variant
+            for rate in fractions:
+                print(f"\n=== {variant} seed={seed} flip={rate} ({args.noise}) ===", flush=True)
+                part_rows, _ = evaluate_fraction(adata, y_true, rate, run_args)
+                for row in part_rows:
+                    print(
+                        f"{row['source']:12s}  acc_true={row['acc_vs_true']:.3f}  "
+                        f"correct={_fmt(row['correction_rate'])}  "
+                        f"auroc={_fmt(row['discovery_auroc_1m_p_given'])}  "
+                        f"P@k={_fmt(row['precision_at_nflip'])}",
+                        flush=True,
+                    )
+                rows.extend(part_rows)
+                (OUT / "metrics.json").write_text(
+                    json.dumps(_json_ready({"meta": meta, "rows": rows}), indent=2), encoding="utf-8"
+                )
     df = pd.DataFrame(rows)
-    tag = args.noise
+    tag = f"{args.variant}_{args.noise}"
     df.to_csv(OUT / f"metrics_{tag}.csv", index=False)
-    plot_curves(df, OUT / f"noise_curves_{tag}.png")
+    if args.variant == "compare":
+        plot_compare(df, OUT / f"compare_{args.noise}.png")
+        tests = paired_tests(df)
+        (OUT / f"compare_{args.noise}.json").write_text(
+            json.dumps(_json_ready({"meta": meta, "tests": tests, "rows": rows}), indent=2), encoding="utf-8"
+        )
+        print(json.dumps(_json_ready({"tests": tests}), indent=2))
+    else:
+        plot_curves(df[df["source"].isin(["scldl", "scldl_model", "knn"])], OUT / f"noise_curves_{tag}.png")
     payload = _json_ready({"meta": meta, "rows": rows})
     (OUT / f"metrics_{tag}.json").write_text(json.dumps(payload, indent=2), encoding="utf-8")
     (OUT / "metrics.json").write_text(json.dumps(payload, indent=2), encoding="utf-8")
